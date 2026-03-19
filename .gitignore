@@ -62,3 +62,7 @@ devops/.env
 .settings/
 *.sublime-project
 *.sublime-workspace
+
+## Python
+.env
+venv

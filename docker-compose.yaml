@@ -13,3 +13,12 @@ services:
     networks:
       - iot_network
     restart: unless-stopped
+
+volumes:
+  mosquitto_data:
+  mosquitto_log:
+
+# Định nghĩa Network nội bộ để các container gọi nhau bằng tên service
+networks:
+  iot_network:
+    driver: bridge

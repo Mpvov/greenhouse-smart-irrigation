@@ -1,0 +1,144 @@
+/* App layout — Walking Skeleton */
+
+/* ─── App Shell ─────────────────────────────────────────────────────────── */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-layout__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.app-layout__content {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
+  background-color: var(--color-bg-main, #f0f4f8);
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 220px;
+  min-width: 220px;
+  background-color: var(--color-sidebar-bg, #1a2332);
+  color: var(--color-sidebar-text, #c9d6e3);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1rem;
+}
+
+.sidebar__logo {
+  font-size: 1.5rem;
+}
+
+.sidebar__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 0.75rem;
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  color: var(--color-sidebar-text, #c9d6e3);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.sidebar__link:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.sidebar__link--active {
+  background-color: var(--color-accent, #3a7bd5);
+  color: #fff;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 60px;
+  background-color: #fff;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  flex-shrink: 0;
+}
+
+.header__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-heading, #1a2332);
+  margin: 0;
+}
+
+.header__ws-status {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+}
+
+.header__ws-status--disconnected {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.header__ws-status--connected {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.header__ws-status--reconnecting {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* ─── Page Stubs ─────────────────────────────────────────────────────────── */
+.page {
+  padding: 0.5rem;
+}
+
+.page__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-heading, #1a2332);
+  margin-bottom: 0.75rem;
+}
+
+.page__placeholder {
+  color: var(--color-text-muted, #64748b);
+  font-size: 0.95rem;
+  border: 2px dashed var(--color-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 2rem;
+  text-align: center;
+}

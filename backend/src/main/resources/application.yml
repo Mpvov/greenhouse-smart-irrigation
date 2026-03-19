@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: irrigation-backend
+
+  # ── MongoDB (Reactive) ───────────────────────────────────────────────────
+  data:
+    mongodb:
+      # Docker profile: overridden by SPRING_DATA_MONGODB_URI env var
+      uri: mongodb://localhost:27017/irrigation_db
+
+    # ── Redis ────────────────────────────────────────────────────────────────
+    redis:
+      host: localhost
+      port: 6379
+
+# ── Server ────────────────────────────────────────────────────────────────────
+server:
+  port: 8080
+
+# ── MQTT (custom properties — read by MqttConfig.java) ───────────────────────
+mqtt:
+  broker:
+    url: tcp://localhost:1883
+  client:
+    id: irrigation-backend-${random.uuid}
+  topic:
+    publish: command/#
+
+# ── Logging ─────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.thesis.irrigation: DEBUG
+
+---
+# ── Docker Profile (activated via SPRING_PROFILES_ACTIVE=docker) ────────────
+spring:
+  config:
+    activate:
+      on-profile: docker
+  data:
+    mongodb:
+      # SPRING_DATA_MONGODB_URI env var injected by docker-compose overrides this
+      uri: ${SPRING_DATA_MONGODB_URI}
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+mqtt:
+  broker:
+    url: ${MQTT_BROKER_URL:tcp://cloud-remote-broker:1883}

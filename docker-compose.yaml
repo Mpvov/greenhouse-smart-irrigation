@@ -1,24 +1,199 @@
+# =============================================================================
+# docker-compose.yaml — Smart Irrigation System (Prototype / All-in-One Local)
+#
+# Architecture: Edge-Fog-Cloud giả lập cục bộ trên 1 file duy nhất.
+# Run: docker-compose up --build
+#
+# Service map:
+#   fog-local-broker    → MQTT Broker tại nhà kính (port 1883 host)
+#   cloud-remote-broker → MQTT Broker trung tâm (port 1884 host)
+#   mongodb             → Database Time-Series (port 27017 host)
+#   redis               → Cache & Pub/Sub (port 6379 host)
+#   cloud-backend       → Spring Boot WebFlux (port 8080 host)
+#   cloud-frontend      → React + Vite Dev Server (port 5173 host)
+# =============================================================================
+
+name: irrigation
+
 services:
-  # 1. MQTT Broker (Lớp Messaging)
-  mosquitto:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 1. FOG LAYER — Local MQTT Broker (Chỉ nằm trong mạng FOG)
+  #    - Kết nối với cloud-remote-broker qua tư cách "Gateway"
+  # ──────────────────────────────────────────────────────────────────────────
+  fog-local-broker:
     image: eclipse-mosquitto:2.0
-    container_name: iot_mosquitto
+    container_name: fog-local-broker
     ports:
-      - "1883:1883" # Port chuẩn MQTT
-      - "9001:9001" # Port cho WebSockets (nếu React muốn nghe trực tiếp)
+      - "1883:1883"
     volumes:
-      - ./devops/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - mosquitto_data:/mosquitto/data
-      - mosquitto_log:/mosquitto/log
+      - ./devops/mosquitto/config/mosquitto-local.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_local_data:/mosquitto/data
+      - mosquitto_local_log:/mosquitto/log
     networks:
-      - iot_network
+      - fog-net # Kết nối với Sensor/Edge
+      - cloud-net # Kết nối với Cloud Broker để làm Bridge
     restart: unless-stopped
 
-volumes:
-  mosquitto_data:
-  mosquitto_log:
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2. CLOUD LAYER — Cloud MQTT Broker (Nằm trong mạng CLOUD)
+  # ──────────────────────────────────────────────────────────────────────────
+  cloud-remote-broker:
+    image: eclipse-mosquitto:2.0
+    container_name: cloud-remote-broker
+    ports:
+      - "1884:1883"
+    volumes:
+      - ./devops/mosquitto/config/mosquitto-cloud.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_cloud_data:/mosquitto/data
+      - mosquitto_cloud_log:/mosquitto/log
+    networks:
+      - cloud-net
+    restart: unless-stopped
 
-# Định nghĩa Network nội bộ để các container gọi nhau bằng tên service
+  # ──────────────────────────────────────────────────────────────────────────
+  # 3. DATABASE — MongoDB (Nằm trong mạng CLOUD - Cô lập hoàn toàn với FOG)
+  # ──────────────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: cloud-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-irrigation_secret}
+      MONGO_INITDB_DATABASE: irrigation_db
+    volumes:
+      - mongodb_data:/data/db
+      - ./devops/scripts/init-db.js:/docker-entrypoint-initdb.d/init-db.js:ro
+    networks:
+      - cloud-net
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "mongosh", "--username", "${MONGO_ROOT_USERNAME:-admin}", "--password", "${MONGO_ROOT_PASSWORD:-irrigation_secret}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 4. CACHE — Redis (Nằm trong mạng CLOUD)
+  # ──────────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: cloud-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cloud-net
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 5. BACKEND — Spring Boot WebFlux (Nằm trong mạng CLOUD)
+  # ──────────────────────────────────────────────────────────────────────────
+  cloud-backend:
+    build:
+      context: ./backend
+      dockerfile: ../devops/docker/backend.Dockerfile
+    container_name: cloud-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-irrigation_secret}@mongodb:27017/irrigation_db?authSource=admin
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      MQTT_BROKER_URL: tcp://cloud-remote-broker:1883
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cloud-remote-broker:
+        condition: service_started
+    networks:
+      - cloud-net
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 6. FRONTEND — React (Nằm trong mạng CLOUD)
+  # ──────────────────────────────────────────────────────────────────────────
+  cloud-frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../devops/docker/frontend.Dockerfile
+    container_name: cloud-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://cloud-backend:8080/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - cloud-backend
+    networks:
+      - cloud-net
+    restart: unless-stopped
+  # ──────────────────────────────────────────────────────────────────────────
+  # 7. GATEWAY — Nginx Reverse Proxy (Cửa ngõ duy nhất)
+  # ──────────────────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: cloud-gateway
+    ports:
+      - "80:80" # Bạn chỉ cần nhớ duy nhất cổng 80 này
+    volumes:
+      - ./devops/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - cloud-frontend
+      - cloud-backend
+    networks:
+      - cloud-net
+  # ──────────────────────────────────────────────────────────────────────────
+  # 8. FOG NODE — Node-RED (Gateway & Rule Engine)
+  # ──────────────────────────────────────────────────────────────────────────
+  node-red:
+    image: nodered/node-red:latest
+    container_name: fog-node-red
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+    ports:
+      - "1880:1880" # Giao diện thiết kế luồng (Flows)
+    volumes:
+      - node_red_data:/data
+    networks:
+      - fog-net # Kết nối với fog-local-broker
+      - cloud-net # Kết nối với cloud-remote-broker
+    depends_on:
+      - fog-local-broker
+    restart: unless-stopped
+
+# =============================================================================
+# Persistent Volumes
+# =============================================================================
+volumes:
+  mosquitto_local_data:
+  mosquitto_local_log:
+  mosquitto_cloud_data:
+  mosquitto_cloud_log:
+  mongodb_data:
+  redis_data:
+  node_red_data:
+    # =============================================================================
+    # Networks — Phân tách vật lý giữa Fog và Cloud
+    # =============================================================================
 networks:
-  iot_network:
+  fog-net:
     driver: bridge
+    name: fog-net # Mạng tại nhà kính
+  cloud-net:
+    driver: bridge
+    name: cloud-net # Mạng trên Server/Cloud

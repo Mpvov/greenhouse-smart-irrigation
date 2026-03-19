@@ -66,3 +66,7 @@ devops/.env
 ## Python
 .env
 venv
+*.pdf
+*.md
+flows.json
+.env.example

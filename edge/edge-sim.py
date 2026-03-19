@@ -8,9 +8,11 @@ import paho.mqtt.client as mqtt
 # ==========================================
 # Nếu Mosquitto chạy trên cùng máy tính này (qua Docker), dùng 127.0.0.1
 # Nếu EC2, thay bằng IP Public của EC2
-BROKER_ADDRESS = "127.0.0.1" 
+BROKER_ADDRESS = "10.42.134.72" 
 PORT = 1883
-TOPIC_TELEMETRY = "gh/zone1/yolo1/tele/sensors"
+TOPIC_TELEMETRY_TEMP = "1/temp"
+TOPIC_TELEMETRY_HUMI = "1/humidity"
+TOPIC_TELEMETRY_SOIL = "1/1/soil"
 
 # Hàm callback khi kết nối thành công tới Broker
 def on_connect(client, userdata, flags, reason_code, properties=None):
@@ -58,20 +60,16 @@ def publish_mock_sensor_data():
                 print("⚠️ [MÔ PHỎNG LỖI CẢM BIẾN]")
 
             # Tạo Payload Dictionary
-            payload_dict = {
-                "temp": temp_val,
-                "humi": humi_val,
-                "soil": soil_val,
-                "mode": "AUTO"
-            }
-            
-            # Chuyển đổi sang chuỗi JSON
-            payload_json = json.dumps(payload_dict)
+            payload_dict_temp = str(temp_val)
+            payload_dict_humi = str(humi_val)
+            payload_dict_soil = str(soil_val)
             
             # Publish lên Broker
-            client.publish(TOPIC_TELEMETRY, payload_json, qos=1)
-            
-            print(f"📤 Đã gửi: {payload_json}")
+            client.publish(TOPIC_TELEMETRY_TEMP, payload_dict_temp, qos=1)
+            client.publish(TOPIC_TELEMETRY_HUMI, payload_dict_humi, qos=1)
+            client.publish(TOPIC_TELEMETRY_SOIL, payload_dict_soil, qos=1)
+
+            print(f"📤 Đã gửi: payload_dict_temp = {payload_dict_temp}, payload_dict_humi = {payload_dict_humi}, payload_dict_soil = {payload_dict_soil}    ")
             
         except KeyboardInterrupt:
             print("\n🛑 Đã dừng giả lập.")
@@ -83,14 +81,7 @@ def publish_mock_sensor_data():
             
         # Gửi mỗi 3 giây 1 lần
         time.sleep(5)
-def test_pump():
-
-    payload = 1
-    client.publish("v1", payload, qos=1)
-    time.sleep(3)
-    payload = 0
-    client.publish("v1", payload, qos=1)
 
 # Chạy vòng lặp
 if __name__ == "__main__":
-    test_pump()
+    publish_mock_sensor_data()

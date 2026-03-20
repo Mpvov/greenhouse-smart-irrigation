@@ -23,7 +23,12 @@ public record DataRecord(
         @Id
         String id,
 
-        String deviceId,     // metaField: Groups data by device (e.g., "device-001")
+        String deviceId,     // metaField: Full topic path (e.g., "user_1/gh_A/z_01/temp")
+        String userId,       // user_id: e.g., "123"
+        String greenhouseId, // greenhouse_id: e.g., "A"
+        String zoneId,       // zone_id: e.g., "01"
+        String rowId,        // row_id: e.g., "r_01" (null for zone metrics)
+
         String measurement,  // Type of measurement: "temperature" | "humidity" | "soil_moisture"
         Double value,        // Measured value
         Instant timestamp    // timeField: Mandatory time anchor for time-series bucketing

@@ -11,6 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.thesis.irrigation.utils.JwtUtil;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -24,14 +28,27 @@ public class MonitoringController {
     private final GreenhouseRepository greenhouseRepository;
     private final ZoneRepository zoneRepository;
     private final RowRepository rowRepository;
+    private final JwtUtil jwtUtil;
+
+    private String getUserIdFromHeader(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            if (jwtUtil.validateToken(token)) {
+                return jwtUtil.getUserIdFromToken(token);
+            }
+        }
+        return null;
+    }
 
     /**
-     * Returns the full hierarchy of greenhouses, zones, and rows.
-     * In a production system, this might be filtered by user, but for now we return all.
+     * Returns the full hierarchy of greenhouses, zones, and rows for the authenticated user.
      */
     @GetMapping("/tree")
-    public Mono<BaseResponse<List<GreenhouseTree>>> getMonitoringTree() {
-        return greenhouseRepository.findAll()
+    public Mono<org.springframework.http.ResponseEntity<BaseResponse<List<GreenhouseTree>>>> getMonitoringTree(@org.springframework.web.bind.annotation.RequestHeader("Authorization") String authHeader) {
+        String userId = getUserIdFromHeader(authHeader);
+        if (userId == null) return Mono.just(org.springframework.http.ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build());
+
+        return greenhouseRepository.findByOwnerId(userId)
                 .flatMap(gh -> zoneRepository.findByGreenhouseId(gh.id())
                         .flatMap(zone -> rowRepository.findByZoneId(zone.id())
                                 .collectList()
@@ -39,7 +56,7 @@ public class MonitoringController {
                         .collectList()
                         .map(zones -> new GreenhouseTree(gh, zones)))
                 .collectList()
-                .map(list -> BaseResponse.success("Fetched monitoring tree", list));
+                .map(list -> org.springframework.http.ResponseEntity.ok(BaseResponse.success("Fetched monitoring tree", list)));
     }
 
     // DTOs for the tree structure

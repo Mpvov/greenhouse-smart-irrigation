@@ -14,8 +14,13 @@ public record ControlLog(
         @Id
         String id,
 
-        String deviceId,
-        String action, // "start" or "stop"
-        String source, // "MANUAL", "AUTO", "SCHEDULE", "AI"
+        String deviceId,     // metaField: Full topic path
+        String userId,
+        String greenhouseId,
+        String zoneId,
+        String rowId,
+
+        String action,       // "start" or "stop"
+        String source,       // "MANUAL", "AUTO", "SCHEDULE", "AI"
         Instant timestamp
 ) {}

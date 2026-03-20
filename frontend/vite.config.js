@@ -17,13 +17,13 @@ export default defineConfig({
       host: 'localhost',
     },
     proxy: {
-      // Sửa tên service từ 'backend' thành 'cloud-backend' cho đúng Docker Compose
+      // Sửa tên service thành localhost cho môi trường local
       '/api': {
-        target: 'http://cloud-backend:8080',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:8080',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'http://cloud-backend:8080',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:8080',
         changeOrigin: true,
         ws: true,
       },

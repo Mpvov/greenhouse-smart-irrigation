@@ -42,15 +42,23 @@ public class DatabaseInitializer implements ApplicationListener<ApplicationReady
 
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {
-        log.info("[DatabaseInitializer] Dropping old data and seeding fresh mock data...");
+        log.info("[DatabaseInitializer] Checking if database needs seeding...");
 
         try {
-            dropAll()
-                    .then(seedData())
+            userRepository.count()
+                    .flatMap(count -> {
+                        if (count == 0) {
+                            log.info("[DatabaseInitializer] Database is empty. Dropping old collections (if any) and seeding fresh mock data...");
+                            return dropAll().then(seedData());
+                        } else {
+                            log.info("[DatabaseInitializer] Database already has {} users. Skipping seeding.", count);
+                            return Mono.empty();
+                        }
+                    })
                     .block();
-            log.info("[DatabaseInitializer] ✅ Database initialization completed.");
+            log.info("[DatabaseInitializer] ✅ Database initialization check completed.");
         } catch (Exception error) {
-            log.error("[DatabaseInitializer] Error: {}", error.getMessage(), error);
+            log.error("[DatabaseInitializer] Error during initialization: {}", error.getMessage(), error);
         }
     }
 
@@ -95,6 +103,7 @@ public class DatabaseInitializer implements ApplicationListener<ApplicationReady
         Row row = Row.builder()
                 .id("1")
                 .zoneId("1")
+                .greenhouseId("1")
                 .name("Luống 1")
                 .plantType("Cà chua")
                 .currentMode("AUTO")
@@ -124,17 +133,25 @@ public class DatabaseInitializer implements ApplicationListener<ApplicationReady
         for (int i = 24; i >= 0; i--) {
             Instant ts = now.minus(i, ChronoUnit.HOURS);
 
+            // Per Skill: full topic as deviceId, separate fields for IDs
+            String zTopic = "user_1/gh_1/z_1/temp";
+            String rTopic = "user_1/gh_1/z_1/r_1/soil";
+
             // Zone-level: temperature & humidity
-            records.add(new DataRecord(null, "1", "temperature", 25.0 + random.nextDouble() * 10, ts));
-            records.add(new DataRecord(null, "1", "humidity", 50.0 + random.nextDouble() * 30, ts));
+            records.add(new DataRecord(null, zTopic, "1", "1", "1", null, "temperature", 25.0 + random.nextDouble() * 10, ts));
+            records.add(new DataRecord(null, zTopic, "1", "1", "1", null, "humidity", 50.0 + random.nextDouble() * 30, ts));
 
             // Row-level: soil moisture
-            records.add(new DataRecord(null, "1", "soil_moisture", 30.0 + random.nextDouble() * 40, ts));
+            records.add(new DataRecord(null, rTopic, "1", "1", "1", "1", "soil_moisture", 30.0 + random.nextDouble() * 40, ts));
 
             // ControlLog every 6 hours
             if (i % 6 == 0) {
                 logs.add(ControlLog.builder()
-                        .deviceId("1")
+                        .deviceId(rTopic)
+                        .userId("1")
+                        .greenhouseId("1")
+                        .zoneId("1")
+                        .rowId("1")
                         .action(i % 12 == 0 ? "start" : "stop")
                         .source("AUTO")
                         .timestamp(ts.plus(30, ChronoUnit.MINUTES))

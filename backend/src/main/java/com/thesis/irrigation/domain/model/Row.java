@@ -13,9 +13,12 @@ public record Row(
         @Id
         String id,
         String zoneId,
+        String greenhouseId,
         String name,
         String plantType,       // e.g., "Cà chua", "Dưa leo"
         String currentMode,     // "AUTO" | "MANUAL"
+        Double thresholdMin,
+        Double thresholdMax,
         Double lastSoilMoisture,
         String pumpStatus       // "ON" | "OFF"
 ) {}

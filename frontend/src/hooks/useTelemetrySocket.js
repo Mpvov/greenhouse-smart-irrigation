@@ -63,11 +63,18 @@ export function useTelemetrySocket(url, token, fallbackUserId = "1") {
 
             events.forEach((e) => {
               // Standardize topic name to match backend ID extraction: e.g. "userId/ghId/zId/rId/"
-              const rawName = e.n || '';
-              const parts = baseName.split('/').filter(Boolean);
+              const rawParts = baseName.split('/').filter(Boolean);
+              const parts = rawParts.map(part => {
+                if (part.startsWith('user_')) return part.substring(5);
+                if (part.startsWith('gh_')) return part.substring(3);
+                if (part.startsWith('z_')) return part.substring(2);
+                if (part.startsWith('r_')) return part.substring(2);
+                return part;
+              });
+
               // if length is > 4, we assume [userid, ghid, zId, rId, metricName]
-              const rowId = parts.length > 4 ? parts[3] : null;
-              const zoneId = parts.length > 2 ? parts[2] : null;
+              const rowId = rawParts.length > 4 ? parts[3] : null;
+              const zoneId = rawParts.length > 2 ? parts[2] : null;
               const deviceId = rowId || zoneId || 'unknown';
               
               // Key the state by deviceId for easy lookups in cards
@@ -75,6 +82,7 @@ export function useTelemetrySocket(url, token, fallbackUserId = "1") {
                 if (!newData[deviceId]) newData[deviceId] = {};
                 
                 // Map sensor names (t, h, soil) to readable keys
+                const rawName = e.n || '';
                 const key = (rawName === 't' || rawName === 'temp') ? 'temperature' : 
                             (rawName === 'h' || rawName === 'humidity') ? 'humidity' : 
                             (rawName === 'soil' || rawName === 'soil_moisture') ? 'soilMoisture' : rawName;

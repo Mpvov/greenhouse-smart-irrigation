@@ -13,13 +13,48 @@ import {
 
 function History() {
   const [historyData, setHistoryData] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
   const [selectedDevice, setSelectedDevice] = useState("1"); 
   const [hours, setHours] = useState(24);
 
+  // Fetch the monitoring tree to populate selector
   useEffect(() => {
+    const fetchTree = async () => {
+      try {
+        const res = await axios.get('/api/v1/monitoring/tree');
+        if (res.data.status === 200) {
+          const greenhouseList = res.data.data;
+          const flattenedRows = [];
+          greenhouseList.forEach(gh => {
+            gh.zones.forEach(zone => {
+              zone.rows.forEach(row => {
+                flattenedRows.push({
+                  id: row.id,
+                  displayName: `Zone ${zone.info.name} / ${row.name}`,
+                });
+              });
+            });
+          });
+          setRows(flattenedRows);
+          // Only pick default if it's the initial dummy value
+          if (flattenedRows.length > 0 && selectedDevice === "1") {
+            const exists = flattenedRows.some(r => r.id === "1");
+            if (!exists) setSelectedDevice(flattenedRows[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch monitoring tree", err);
+      }
+    };
+    fetchTree();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDevice) return;
+
     const fetchHistory = async () => {
       setLoading(true);
       setError(null);
@@ -29,7 +64,6 @@ function History() {
           const records = response.data.data.telemetryData || [];
           
           // Pivot measurement records by timestamp into a format recharts expects:
-          // { time: "...", temperature: 25, humidity: 60 }
           const pivoted = {};
           
           records.forEach(r => {
@@ -43,16 +77,14 @@ function History() {
                 };
              }
              
-             // Normalize keys since Mock DB and Node-RED emit varying string names
              let key = r.measurement;
-             if (key === 'temp' || key === 't') key = 'temperature';
-             if (key === 'soil' || key === 'soil_moisture') key = 'soilMoisture';
-             if (key === 'h') key = 'humidity';
+             if (key === 'temp' || key === 't' || key === 'temperature') key = 'temperature';
+             if (key === 'soil' || key === 'soil_moisture' || key === 'soilMoisture') key = 'soilMoisture';
+             if (key === 'h' || key === 'humidity') key = 'humidity';
              
              pivoted[timeKey][key] = r.value;
           });
           
-          // Sort chronologically
           const chartData = Object.values(pivoted).sort((a,b) => a.rawTime - b.rawTime);
           setHistoryData(chartData);
         } else {
@@ -79,7 +111,10 @@ function History() {
             onChange={e => setSelectedDevice(e.target.value)} 
             style={{ marginLeft: '0.5rem', background: '#252525', color: '#fff', border: '1px solid #555', padding: '0.4rem', borderRadius: '4px' }}
           >
-            <option value="1">Zone 1 / Row 1</option>
+            {rows.length === 0 && <option value="1">Loading devices...</option>}
+            {rows.map(r => (
+              <option key={r.id} value={r.id}>{r.displayName}</option>
+            ))}
           </select>
         </label>
         
@@ -87,13 +122,13 @@ function History() {
           Time Range:
           <select 
             value={hours} 
-            onChange={e => setHours(e.target.value)} 
+            onChange={e => setHours(Number(e.target.value))} 
             style={{ marginLeft: '0.5rem', background: '#252525', color: '#fff', border: '1px solid #555', padding: '0.4rem', borderRadius: '4px' }}
           >
-            <option value="1">Last 1 Hour</option>
-            <option value="6">Last 6 Hours</option>
-            <option value="24">Last 24 Hours</option>
-            <option value="168">Last 7 Days</option>
+            <option value={1}>Last 1 Hour</option>
+            <option value={6}>Last 6 Hours</option>
+            <option value={24}>Last 24 Hours</option>
+            <option value={168}>Last 7 Days</option>
           </select>
         </label>
       </div>

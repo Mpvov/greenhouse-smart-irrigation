@@ -33,7 +33,7 @@ public class TelemetryService {
 
     /**
      * Entry point for processing raw MQTT telemetry payloads.
-     * Topic format: {userId}/{ghId}/{zId}/{rId}/{metric}  (e.g., "1/1/1/1/soil")
+     * Topic format: {userId}/{ghId}/{zId}/{rId}/{metric} (e.g., "1/1/1/1/soil")
      */
     public Mono<Void> processMessage(String topic, String payload) {
         // ── Drop System & Malformed Topics ──
@@ -43,9 +43,10 @@ public class TelemetryService {
 
         log.debug("[TelemetryService] Topic: {}, Payload: {}", topic, payload);
 
-        // ── Parse userId from topic for data isolation ──
+        // ── Parse pure userId from topic for data isolation (Strip 'user_' prefix) ──
         String[] parts = topic.split("/");
-        String userId = parts.length > 0 ? parts[0] : "unknown";
+        String rawUserId = parts.length > 0 ? parts[0] : "unknown";
+        String userId = extractId(rawUserId, "user_");
 
         // ── Hot Path: Enrich payload with userId, push to Redis ──
         String enrichedPayload;
@@ -55,8 +56,7 @@ public class TelemetryService {
             enrichedPayload = objectMapper.writeValueAsString(
                     objectMapper.createObjectNode()
                             .put("userId", userId)
-                            .set("data", root)
-            );
+                            .set("data", root));
         } catch (Exception e) {
             enrichedPayload = payload; // Fallback: raw payload
         }
@@ -76,45 +76,54 @@ public class TelemetryService {
      */
     private Mono<Void> parseAndSave(String topic, String payload) {
         try {
-            // Extract IDs from topic: {userId}/{ghId}/{zId}/{rId}/... or {userId}/{ghId}/{zId}/...
-            String[] parts = topic.split("/");
-            String zoneId = parts.length > 2 ? parts[2] : null;
-            String rowId  = parts.length > 4 ? parts[3] : null;
-
             JsonNode root = objectMapper.readTree(payload);
+
+            // Per Skill Rule 4.1: 'bn' (Base Name) should be the full Cloud Topic path
+            String deviceId = root.has("bn") ? root.get("bn").asText() : topic;
+
+            // Hierarchical Topic: {userId}/{ghId}/{zId}/{rId}/{metric} OR {userId}/{ghId}/{zId}/{metric}
+            String[] parts = deviceId.split("/");
+            String userId = parts.length > 0 ? extractId(parts[0], "user_") : null;
+            String greenhouseId = parts.length > 1 ? extractId(parts[1], "gh_") : null;
+            String zoneId = parts.length > 2 ? extractId(parts[2], "z_") : null;
+            // Row ID is at parts[3] if length > 4 (e.g. user/gh/z/r/soil)
+            String rowId = parts.length > 4 ? extractId(parts[3], "r_") : null;
+
+            // State updates apply to specific Row or Zone objects (using pure IDs)
+            String stateUpdateId = (rowId != null) ? rowId : zoneId;
+
             JsonNode entries = root.path("e");
+            List<DataRecord> records = new ArrayList<>();
 
             if (entries.isMissingNode() || !entries.isArray()) {
-                // Try parsing as flat key-value: topic ends with metric name
-                String metricName = parts.length > 4 ? parts[4] : "unknown";
-                double value = root.has("v") ? root.path("v").asDouble() : 0.0;
-                String deviceId = rowId != null ? rowId : (zoneId != null ? zoneId : "unknown");
+                // Fallback: Metric name from last part of topic/bn, 'v' for value, 't' for epoch seconds
+                String metric = (parts.length > 0) ? parts[parts.length - 1] : "unknown";
+                double v = root.has("v") ? root.path("v").asDouble() : 0.0;
+                long t = root.has("t") ? root.path("t").asLong() : 0;
+                Instant ts = (t > 0) ? Instant.ofEpochSecond(t) : Instant.now();
 
-                DataRecord record = new DataRecord(null, deviceId, metricName, value, Instant.now());
-                return dataRecordRepository.save(record)
-                        .then(updateLastKnownState(deviceId, List.of(record)))
-                        .then();
-            }
+                records.add(new DataRecord(null, deviceId, userId, greenhouseId, zoneId, rowId, metric, v, ts));
+            } else {
+                // Standard SenML Array processing
+                for (JsonNode entry : entries) {
+                    String n = entry.path("n").asText();
+                    double v = entry.path("v").asDouble();
+                    // entry.t takes precedence over root.t
+                    long t = entry.has("t") ? entry.get("t").asLong() : (root.has("t") ? root.get("t").asLong() : 0);
+                    Instant ts = (t > 0) ? Instant.ofEpochSecond(t) : Instant.now();
 
-            // Standard SenML with "e" array
-            String deviceId = rowId != null ? rowId : (zoneId != null ? zoneId : "unknown");
-            List<DataRecord> records = new ArrayList<>();
-            Instant now = Instant.now();
-
-            for (JsonNode entry : entries) {
-                String name = entry.path("n").asText();
-                double value = entry.path("v").asDouble();
-                records.add(new DataRecord(null, deviceId, name, value, now));
+                    records.add(new DataRecord(null, deviceId, userId, greenhouseId, zoneId, rowId, n, v, ts));
+                }
             }
 
             if (records.isEmpty()) return Mono.empty();
 
             return dataRecordRepository.saveAll(records)
-                    .then(updateLastKnownState(deviceId, records))
+                    .then(updateLastKnownState(stateUpdateId, records))
                     .then();
 
         } catch (Exception e) {
-            log.error("[Cold Path] Failed to parse: {}", e.getMessage());
+            log.error("[Cold Path] Failed to parse payload for topic {}: {}", topic, e.getMessage());
             return Mono.empty();
         }
     }
@@ -129,6 +138,7 @@ public class TelemetryService {
                     Row.RowBuilder builder = Row.builder()
                             .id(row.id())
                             .zoneId(row.zoneId())
+                            .greenhouseId(row.greenhouseId())
                             .name(row.name())
                             .plantType(row.plantType())
                             .currentMode(row.currentMode())
@@ -156,7 +166,8 @@ public class TelemetryService {
                                             .lastHumidity(zone.lastHumidity());
 
                                     for (DataRecord rec : records) {
-                                        if ("temperature".equals(rec.measurement()) || "t".equals(rec.measurement()) || "temp".equals(rec.measurement())) {
+                                        if ("temperature".equals(rec.measurement()) || "t".equals(rec.measurement())
+                                                || "temp".equals(rec.measurement())) {
                                             builder.lastTemperature(rec.value());
                                         }
                                         if ("humidity".equals(rec.measurement()) || "h".equals(rec.measurement())) {
@@ -164,8 +175,18 @@ public class TelemetryService {
                                         }
                                     }
                                     return zoneRepository.save(builder.build()).then();
-                                })
-                )
+                                }))
                 .then();
+    }
+
+    /**
+     * Extracts pure ID by stripping prefix (e.g., "user_123" -> "123").
+     */
+    private String extractId(String part, String prefix) {
+        if (part == null) return null;
+        if (part.startsWith(prefix)) {
+            return part.substring(prefix.length());
+        }
+        return part;
     }
 }

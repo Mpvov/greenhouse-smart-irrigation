@@ -28,12 +28,25 @@ public class AuthController {
 
     @PostMapping("/register")
     public Mono<ResponseEntity<BaseResponse<AuthResponse>>> register(@RequestBody LoginRequest request) {
-        return userRepository.findByEmail(request.email())
-                .flatMap(existingUser -> Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(BaseResponse.<AuthResponse>error(HttpStatus.CONFLICT.value(), "Email already exists"))))
+        String email = request.email();
+        if (email == null || !email.contains("@")) {
+            return Mono.just(ResponseEntity.badRequest()
+                    .body(BaseResponse.<AuthResponse>error(HttpStatus.BAD_REQUEST.value(), "Invalid email format")));
+        }
+
+        String suggestedId = email.split("@")[0];
+
+        // Ensure both ID (prefix) and Email are unique
+        return userRepository.findById(suggestedId)
+                .flatMap(foundById -> Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(BaseResponse.<AuthResponse>error(HttpStatus.CONFLICT.value(), "User ID (email prefix) already exists"))))
+                .switchIfEmpty(userRepository.findByEmail(email)
+                        .flatMap(foundByEmail -> Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(BaseResponse.<AuthResponse>error(HttpStatus.CONFLICT.value(), "Email already exists")))))
                 .switchIfEmpty(Mono.defer(() -> {
                     User newUser = User.builder()
-                            .email(request.email())
+                            .id(suggestedId)
+                            .email(email)
                             .passwordHash(passwordEncoder.encode(request.password()))
                             .role("OWNER")
                             .build();

@@ -12,7 +12,7 @@ import axios from 'axios';
  *   const data = await apiClient.get('/greenhouses');
  */
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
+    baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
     timeout: 10_000,
     headers: {
         'Content-Type': 'application/json',
@@ -27,8 +27,10 @@ const apiClient = axios.create({
 // =============================================================================
 apiClient.interceptors.request.use(
     (config) => {
-        // TODO: const token = authStore.getState().token;
-        // TODO: if (token) { config.headers.Authorization = `Bearer ${token}`; }
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
     },
     (error) => {
@@ -37,13 +39,52 @@ apiClient.interceptors.request.use(
     }
 );
 
+// Greenhouse CRUD methods
+export const greenhouseApi = {
+    getAll: () => apiClient.get('/v1/greenhouses').then(res => res.data.data),
+    getById: (id) => apiClient.get(`/v1/greenhouses/${id}`).then(res => res.data.data),
+    create: (data) => apiClient.post('/v1/greenhouses', data).then(res => res.data.data),
+    update: (id, data) => apiClient.put(`/v1/greenhouses/${id}`, data).then(res => res.data.data),
+    delete: (id) => apiClient.delete(`/v1/greenhouses/${id}`).then(res => res.data.data),
+};
+
+export const zoneApi = {
+    getByGreenhouse: (ghId) => apiClient.get(`/v1/zones/greenhouse/${ghId}`).then(res => res.data.data),
+    create: (data) => apiClient.post('/v1/zones', data).then(res => res.data.data),
+    update: (id, data) => apiClient.put(`/v1/zones/${id}`, data).then(res => res.data.data),
+    delete: (id) => apiClient.delete(`/v1/zones/${id}`).then(res => res.data.data),
+};
+
+export const rowApi = {
+    getByZone: (zoneId) => apiClient.get(`/v1/rows/zone/${zoneId}`).then(res => res.data.data),
+    create: (data) => apiClient.post('/v1/rows', data).then(res => res.data.data),
+    update: (id, data) => apiClient.put(`/v1/rows/${id}`, data).then(res => res.data.data),
+    delete: (id) => apiClient.delete(`/v1/rows/${id}`).then(res => res.data.data),
+};
+
+export const deviceApi = {
+    getByGreenhouse: (ghId) => apiClient.get(`/v1/devices/greenhouse/${ghId}`).then(res => res.data.data),
+    create: (data) => apiClient.post('/v1/devices', data).then(res => res.data.data),
+    delete: (id) => apiClient.delete(`/v1/devices/${id}`).then(res => res.data.data),
+};
+
+export const scheduleApi = {
+    getByRow: (rowId) => apiClient.get(`/v1/schedules/row/${rowId}`).then(res => res.data.data),
+    create: (data) => apiClient.post('/v1/schedules', data).then(res => res.data.data),
+    delete: (id) => apiClient.delete(`/v1/schedules/${id}`).then(res => res.data.data),
+};
+
+export const alertApi = {
+    getAll: () => apiClient.get('/v1/alerts').then(res => res.data.data),
+    dismiss: (id) => apiClient.delete(`/v1/alerts/${id}`).then(res => res.data.data),
+};
+
 // =============================================================================
 // RESPONSE INTERCEPTOR
 // Intercepts every incoming response.
 // =============================================================================
 apiClient.interceptors.response.use(
     (response) => {
-        // Unwrap the BaseResponse envelope and return only the `data` payload
         return response;
     },
     (error) => {
@@ -51,8 +92,9 @@ apiClient.interceptors.response.use(
         const message = error.response?.data?.message || error.message;
 
         if (status === 401) {
-            // TODO (Auth): Redirect to login page or trigger token refresh
-            console.warn('[apiClient] 401 Unauthorized — redirecting to login...');
+            console.warn('[apiClient] 401 Unauthorized — clearing token...');
+            localStorage.removeItem('token');
+            window.location.href = '/login';
         } else if (status === 500) {
             console.error('[apiClient] 500 Internal Server Error:', message);
         } else {

@@ -30,17 +30,29 @@ public class MqttSubscriptionManager implements ApplicationListener<ApplicationR
         log.info("[MqttSubscriptionManager] Querying DB for Greenhouses to build dynamic MQTT topics...");
 
         greenhouseRepository.findAll()
-                .doOnNext(gh -> {
-                    String topic = gh.ownerId() + "/" + gh.id() + "/#";
-                    try {
-                        mqttInboundAdapter.addTopic(topic, 1);
-                        log.info("[MqttSubscriptionManager] ✅ Subscribed to topic: {}", topic);
-                    } catch (Exception e) {
-                        log.error("[MqttSubscriptionManager] ❌ Failed to subscribe to {}: {}", topic, e.getMessage());
-                    }
-                })
+                .doOnNext(gh -> addSubscription(gh.ownerId(), gh.id()))
                 .doOnComplete(() -> log.info("[MqttSubscriptionManager] ✅ Dynamic MQTT subscription complete."))
                 .doOnError(err -> log.error("[MqttSubscriptionManager] Error querying greenhouses: {}", err.getMessage()))
-                .blockLast();
+                .subscribe(); // Use subscribe() instead of blockLast() to avoid blocking if possible, but this is startup
+    }
+
+    public void addSubscription(String ownerId, String greenhouseId) {
+        String topic = "user_" + ownerId + "/gh_" + greenhouseId + "/#";
+        try {
+            mqttInboundAdapter.addTopic(topic, 1);
+            log.info("[MqttSubscriptionManager] ✅ Subscribed to topic: {}", topic);
+        } catch (Exception e) {
+            log.error("[MqttSubscriptionManager] ❌ Failed to subscribe to {}: {}", topic, e.getMessage());
+        }
+    }
+
+    public void removeSubscription(String ownerId, String greenhouseId) {
+        String topic = "user_" + ownerId + "/gh_" + greenhouseId + "/#";
+        try {
+            mqttInboundAdapter.removeTopic(topic);
+            log.info("[MqttSubscriptionManager] ❌ Unsubscribed from topic: {}", topic);
+        } catch (Exception e) {
+            log.error("[MqttSubscriptionManager] ❌ Failed to unsubscribe from {}: {}", topic, e.getMessage());
+        }
     }
 }

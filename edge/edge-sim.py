@@ -10,9 +10,9 @@ import paho.mqtt.client as mqtt
 # Nếu EC2, thay bằng IP Public của EC2
 BROKER_ADDRESS = "10.42.134.72" 
 PORT = 1883
-TOPIC_TELEMETRY_TEMP = "1/temp"
-TOPIC_TELEMETRY_HUMI = "1/humidity"
-TOPIC_TELEMETRY_SOIL = "1/1/soil"
+TOPIC_TELEMETRY_TEMP = "z_1/temp"
+TOPIC_TELEMETRY_HUMI = "z_1/humidity"
+TOPIC_TELEMETRY_SOIL = "z_1/r_2/soil"
 
 # Hàm callback khi kết nối thành công tới Broker
 def on_connect(client, userdata, flags, reason_code, properties=None):

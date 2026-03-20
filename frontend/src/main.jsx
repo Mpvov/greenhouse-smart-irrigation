@@ -5,6 +5,7 @@ import App from './App.jsx';
 import './index.css';
 
 import { AuthProvider } from './store/AuthContext';
+import { NotificationProvider } from './components/Notification';
 
 /**
  * Application entry point.
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
       <BrowserRouter>
-        <App />
+        <NotificationProvider>
+          <App />
+        </NotificationProvider>
       </BrowserRouter>
     </AuthProvider>
   </StrictMode>

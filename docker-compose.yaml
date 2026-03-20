@@ -133,7 +133,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_BASE_URL: http://cloud-backend:8080/api
+      VITE_API_BASE_URL: /api
+      VITE_BACKEND_URL: http://cloud-backend:8080
     volumes:
       - ./frontend:/app
       - /app/node_modules

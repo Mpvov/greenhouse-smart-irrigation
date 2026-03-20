@@ -58,7 +58,10 @@ public class WebSocketConfig {
         mapping.setUrlMap(urlMap);
         mapping.setOrder(1);
 
-        log.info("[WebSocketConfig] WebSocket endpoint mapped: /ws/telemetry → TelemetryWebSocketHandler");
+        // Allow CORS for WebSockets - critical for cross-port connections
+        mapping.setCorsConfigurations(Map.of("*", new org.springframework.web.cors.CorsConfiguration().applyPermitDefaultValues()));
+
+        log.info("[WebSocketConfig] WebSocket endpoint mapped: /ws/telemetry → TelemetryWebSocketHandler (CORS enabled)");
 
         return mapping;
     }

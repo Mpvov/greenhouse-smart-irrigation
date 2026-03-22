@@ -50,7 +50,7 @@ public class GreenhouseController {
 
         return greenhouseService.getById(id, userId)
                 .map(gh -> ResponseEntity.ok(BaseResponse.success("Success", gh)))
-                .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+                .switchIfEmpty(Mono.error(new org.springframework.security.access.AccessDeniedException("Access Denied")));
     }
 
     @PostMapping

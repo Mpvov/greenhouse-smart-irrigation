@@ -67,6 +67,7 @@ devops/.env
 .env
 venv
 *.pdf
-*.md
+.agents
 flows.json
 .env.example
+.md

@@ -143,6 +143,25 @@ services:
     networks:
       - cloud-net
     restart: unless-stopped
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 6.1 TESTER — Maven environment for Live-Testing (No-Rebuild)
+  # ──────────────────────────────────────────────────────────────────────────
+  cloud-backend-tester:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: cloud-backend-tester
+    volumes:
+      - ./backend:/app
+      - maven_cache:/root/.m2
+    working_dir: /app
+    networks:
+      - cloud-net
+    command: tail -f /dev/null
+    depends_on:
+      - mongodb
+      - redis
+      - cloud-remote-broker
+
   # ──────────────────────────────────────────────────────────────────────────
   # 7. GATEWAY — Nginx Reverse Proxy (Cửa ngõ duy nhất)
   # ──────────────────────────────────────────────────────────────────────────
@@ -188,6 +207,8 @@ volumes:
   mongodb_data:
   redis_data:
   node_red_data:
+  maven_cache:
+
     # =============================================================================
     # Networks — Phân tách vật lý giữa Fog và Cloud
     # =============================================================================

@@ -20,6 +20,8 @@ public class RowController {
 
     private final RowService rowService;
     private final JwtUtil jwtUtil;
+    private final com.thesis.irrigation.domain.repository.ControlLogRepository controlLogRepository;
+    private final com.thesis.irrigation.config.MqttGateway mqttGateway;
 
     private String getUserIdFromHeader(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -69,5 +71,33 @@ public class RowController {
 
         return rowService.deleteRow(id, userId)
                 .then(Mono.just(ResponseEntity.ok(BaseResponse.<Void>success("Deleted", null))));
+    }
+
+    @PostMapping("/{id}/control")
+    public Mono<ResponseEntity<Void>> controlPump(@PathVariable String id, @RequestBody com.thesis.irrigation.domain.dto.ControlRequest request) {
+        return org.springframework.security.core.context.ReactiveSecurityContextHolder.getContext()
+                .map(ctx -> ctx.getAuthentication().getName())
+                .flatMap(tenantId -> rowService.getById(id, tenantId)
+                        .switchIfEmpty(Mono.error(new org.springframework.security.access.AccessDeniedException("Row not found or access denied")))
+                        .flatMap(row -> {
+                            com.thesis.irrigation.domain.model.ControlLog log = com.thesis.irrigation.domain.model.ControlLog.builder()
+                                    .deviceId(tenantId + "/" + row.greenhouseId() + "/" + row.zoneId() + "/" + row.id() + "/command")
+                                    .userId(tenantId)
+                                    .greenhouseId(row.greenhouseId())
+                                    .zoneId(row.zoneId())
+                                    .rowId(row.id())
+                                    .action(request.action())
+                                    .source("USER")
+                                    .timestamp(java.time.Instant.now())
+                                    .build();
+
+                            return controlLogRepository.save(log)
+                                    .flatMap(saved -> {
+                                        String topic = tenantId + "/" + row.greenhouseId() + "/" + row.zoneId() + "/" + row.id() + "/pump/command";
+                                        String payload = "{\"cmd\":\"" + request.action() + "\"}";
+                                        mqttGateway.sendToMqtt(topic, payload);
+                                        return Mono.just(ResponseEntity.ok().<Void>build());
+                                    });
+                        }));
     }
 }

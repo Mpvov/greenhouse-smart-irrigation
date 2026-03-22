@@ -1,0 +1,73 @@
+# ==========================================
+# 🌍 Hệ điều hành & Rác hệ thống
+# ==========================================
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+
+# ==========================================
+# ☕ Backend (Spring Boot / Maven)
+# ==========================================
+target/
+build/
+.mvn/wrapper/
+.gradle/
+bin/
+out/
+
+# Package Files
+*.jar
+*.war
+*.ear
+
+# ==========================================
+# ⚛️ Frontend (React / Vite)
+# ==========================================
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ==========================================
+# 📟 Edge (Yolo:bit / MicroPython)
+# ==========================================
+# Không đẩy cấu hình Wi-Fi và MQTT cục bộ
+edge/config/settings.json
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ==========================================
+# 🐳 DevOps & Mosquitto
+# ==========================================
+devops/mosquitto/data/
+devops/mosquitto/log/
+# Nếu có file môi trường cho Docker
+devops/.env
+
+# ==========================================
+# 💻 IDE Specific (IntelliJ, VS Code, etc.)
+# ==========================================
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+## Python
+.env
+venv
+*.pdf
+.agents
+flows.json
+.env.example
+.md

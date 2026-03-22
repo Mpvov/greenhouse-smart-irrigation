@@ -1,0 +1,477 @@
+.gh-detail {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.gh-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.btn-back {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.btn-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(-4px);
+}
+
+.gh-info-main h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.gh-info-main p {
+  margin: 0.25rem 0 0 0;
+  color: var(--text-secondary);
+}
+
+.zones-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.zones-section__header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.zones-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+}
+
+.zone-card {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.zone-card:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.zone-card__content h4 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem 0;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.zone-card__content h4::before {
+  content: '💠';
+  font-size: 1.1rem;
+}
+
+.zone-stats {
+  display: flex;
+  gap: 2.5rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.zone-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.25rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: var(--bg-card);
+  border: 2px dashed var(--border-color);
+  border-radius: 16px;
+  color: var(--text-secondary);
+}
+
+/* ZoneRows Styles */
+.zone-rows {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
+}
+
+.zone-rows__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.zone-rows__header h5 {
+    font-size: 0.8rem;
+    color: #888;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.rows-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.row-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: #1a1a1a;
+    border-radius: 8px;
+    border: 1px solid #333;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.row-item:hover {
+    background: #222;
+    transform: translateX(4px);
+    border-color: #444;
+}
+
+.row-item__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.row-name {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.row-plant {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.row-item__data {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    margin-right: 8px;
+}
+
+.moisture-val {
+    font-weight: 700;
+    color: #4da6ff;
+    font-size: 0.85rem;
+}
+
+.pump-val {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.pump-val--on {
+    color: #00ff88;
+    background: rgba(0, 255, 136, 0.1);
+}
+
+.pump-val--off {
+    color: #666;
+    background: #252525;
+}
+
+.status-tag {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 999px;
+    width: fit-content;
+    font-weight: 700;
+}
+
+.status-tag--auto {
+    background: rgba(0, 255, 136, 0.1);
+    color: #00ff88;
+}
+
+.status-tag--manual {
+    background: rgba(255, 204, 0, 0.1);
+    color: #ffcc00;
+}
+
+.btn-add-mini {
+    background: #333;
+    color: #00ff88;
+    border: 1px solid #444;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add-mini:hover {
+    background: #444;
+    border-color: #00ff88;
+}
+
+.btn-mini {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.btn-mini:hover {
+    opacity: 1;
+}
+
+.loading-small, .empty-mini {
+    padding: 10px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #555;
+    font-style: italic;
+}
+/* Row Expanded Panels (Devices & Schedules) */
+.row-expanded-panel {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.row-expanded-panel h6 {
+  margin: 0 0 15px 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+}
+
+/* Schedule UI */
+.schedule-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.schedule-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.schedule-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 168, 255, 0.1);
+  border: 1px solid rgba(0, 168, 255, 0.2);
+  padding: 6px 12px;
+  border-radius: 20px;
+  color: #00a8ff;
+  font-size: 0.85rem;
+}
+
+.btn-mini-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.7;
+}
+
+.btn-mini-close:hover {
+  opacity: 1;
+}
+
+.schedule-form-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input-group-mini {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.input-group-mini input {
+  background: none;
+  border: none;
+  color: white;
+  padding: 5px 8px;
+  font-size: 0.85rem;
+}
+
+.input-duration {
+  width: 60px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.btn-add-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin-left: 5px;
+}
+
+.btn-add-circle:hover {
+  transform: scale(1.1);
+}
+
+.no-schedules {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.row-item-container {
+    margin-bottom: 0.5rem;
+}
+
+/* Device Manager Styles */
+.row-devices-panel {
+    margin-top: 8px;
+    padding: 12px;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.row-devices-panel h6 {
+    margin: 0 0 10px 0;
+    font-size: 0.75rem;
+    color: #00ff88;
+    text-transform: uppercase;
+}
+
+.device-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.device-tag {
+    background: #252525;
+    border: 1px solid #444;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #ddd;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-close-mini {
+    background: none;
+    border: none;
+    color: #ff4d4d;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+}
+
+.device-add-form {
+    display: flex;
+    gap: 8px;
+}
+
+.device-add-form input {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.device-add-form select {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}

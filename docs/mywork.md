@@ -1,0 +1,6 @@
+# Tóm tắt công việc / Release Notes
+*Tổng hợp các module và tính năng tôi đã trực tiếp phát triển để team tiện theo dõi:*
+- **Project Structure & Infra:** Khởi tạo The Walking Skeleton, thiết lập cấu trúc thư mục, Docker Compose, Nginx proxy và các script init database.
+- **Edge Simulator:** Viết script Python (`edge/edge-sim.py`) giả lập thiết bị phần cứng, publish bản tin telemetry và nhận command qua MQTT.
+- **Core Telemetry & Monitoring (UC 11):** Cài đặt luồng dữ liệu thời gian thực. Cấu hình MQTT Inbound/Outbound Flow. Tích hợp Redis Pub/Sub và WebSockets (`TelemetryWebSocketHandler`) đẩy dữ liệu trực tiếp lên Frontend. Hoàn thiện Dashboard, đồ thị lịch sử (History) và hệ thống xác thực Auth.
+- **Quản lý Không gian & Thiết bị (UC 3, 4, 5, 6):** Xây dựng toàn bộ Data Model, Repository, Service và Controller (CRUD) cho hệ thống phân cấp vật lý: Nhà kính (Greenhouse) -> Phân khu (Zone) -> Hàng cây (Row). Bổ sung tính năng quản lý Thiết bị (Device), Lịch tưới (Schedule), lưu trữ Cảnh báo (Alert) và Nhật ký điều khiển (ControlLog).

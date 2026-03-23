@@ -11,7 +11,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 public record Zone(
         @Id
-        String id, // e.g., "gh_1_z_1"
+        String id,
+        Integer zoneId,
         String greenhouseId,
         String name,
         Double lastTemperature,

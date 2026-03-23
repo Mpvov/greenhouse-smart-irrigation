@@ -50,8 +50,25 @@ export function useTelemetrySocket(url, token, fallbackUserId = "1") {
 
     socket.onmessage = (event) => {
       try {
-        const parsed = JSON.parse(event.data);
-        const records = Array.isArray(parsed) ? parsed : [parsed];
+        const parsedWrapper = JSON.parse(event.data);
+        // The backend now wraps SenML with physical IDs: 
+        // { userId, ghId, zId, rId, data: { bn: ..., e: [...] } }
+        
+        let physicalGhId = null;
+        let physicalZoneId = null;
+        let physicalRowId = null;
+        let records = [];
+
+        if (parsedWrapper.data) {
+          // New enriched format
+          physicalGhId = parsedWrapper.ghId;
+          physicalZoneId = parsedWrapper.zId;
+          physicalRowId = parsedWrapper.rId;
+          records = Array.isArray(parsedWrapper.data) ? parsedWrapper.data : [parsedWrapper.data];
+        } else {
+          // Fallback legacy format
+          records = Array.isArray(parsedWrapper) ? parsedWrapper : [parsedWrapper];
+        }
 
         setTelemetryData((prevData) => {
           const newData = { ...prevData };
@@ -62,20 +79,23 @@ export function useTelemetrySocket(url, token, fallbackUserId = "1") {
             const events = record.e ? record.e : [record];
 
             events.forEach((e) => {
-              // Standardize topic name to match backend ID extraction: e.g. "userId/ghId/zId/rId/"
-              const rawParts = baseName.split('/').filter(Boolean);
-              const parts = rawParts.map(part => {
-                if (part.startsWith('user_')) return part.substring(5);
-                if (part.startsWith('gh_')) return part.substring(3);
-                if (part.startsWith('z_')) return part.substring(2);
-                if (part.startsWith('r_')) return part.substring(2);
-                return part;
-              });
+              // Priority 1: Use enriched physical IDs from backend if available
+              let deviceId = physicalRowId || physicalZoneId;
 
-              // if length is > 4, we assume [userid, ghid, zId, rId, metricName]
-              const rowId = rawParts.length > 4 ? parts[3] : null;
-              const zoneId = rawParts.length > 2 ? parts[2] : null;
-              const deviceId = rowId || zoneId || 'unknown';
+              // Priority 2: Fallback logic extracting from topic (bn)
+              if (!deviceId) {
+                const rawParts = baseName.split('/').filter(Boolean);
+                const parts = rawParts.map(part => {
+                  if (part.startsWith('user_')) return part.substring(5);
+                  if (part.startsWith('gh_')) return part.substring(3);
+                  if (part.startsWith('z_')) return part.substring(2);
+                  if (part.startsWith('r_')) return part.substring(2);
+                  return part;
+                });
+                const rowId = rawParts.length > 4 ? parts[3] : null;
+                const zoneId = rawParts.length > 2 ? parts[2] : null;
+                deviceId = rowId || zoneId || 'unknown';
+              }
               
               // Key the state by deviceId for easy lookups in cards
               if (deviceId) {

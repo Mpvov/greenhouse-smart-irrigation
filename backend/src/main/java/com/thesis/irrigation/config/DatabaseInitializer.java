@@ -48,17 +48,19 @@ public class DatabaseInitializer implements ApplicationListener<ApplicationReady
             userRepository.count()
                     .flatMap(count -> {
                         if (count == 0) {
-                            log.info("[DatabaseInitializer] Database is empty. Dropping old collections (if any) and seeding fresh mock data...");
+                            log.info("[DatabaseInitializer] 🚨 Database is empty. Initiating clean seed...");
                             return dropAll().then(seedData());
                         } else {
-                            log.info("[DatabaseInitializer] Database already has {} users. Skipping seeding.", count);
+                            log.info("[DatabaseInitializer] ✅ Database already has {} users. Skipping seeding.", count);
                             return Mono.empty();
                         }
                     })
+                    .timeout(java.time.Duration.ofSeconds(10))
+                    .doOnError(e -> log.error("[DatabaseInitializer] ❌ FAILED during initialization: {}", e.getMessage()))
                     .block();
-            log.info("[DatabaseInitializer] ✅ Database initialization check completed.");
+            log.info("[DatabaseInitializer] Initialization check sequence finished.");
         } catch (Exception error) {
-            log.error("[DatabaseInitializer] Error during initialization: {}", error.getMessage(), error);
+            log.error("[DatabaseInitializer] 🛑 CRITICAL Error during initialization: {}", error.getMessage(), error);
         }
     }
 
@@ -76,24 +78,24 @@ public class DatabaseInitializer implements ApplicationListener<ApplicationReady
     private Mono<Void> seedData() {
         // ── 1. User ──
         User user = User.builder()
-                .id("1")
+                .userId("admin")
                 .email("admin@bk.hcm")
                 .passwordHash("$2a$10$EN2xrec0SJEyyFic3TYtmOuo1pSVUqOPD6nS2DdpCGRL55BHSl5MC") // placeholder
-                .role("OWNER")
+                .role("ADMIN")
                 .build();
 
         // ── 2. Greenhouse ──
         Greenhouse gh = Greenhouse.builder()
-                .id("1")
-                .ownerId("1")
+                .greenhouseId("alpha")
+                .ownerId("admin")
                 .name("Nhà kính Alpha")
                 .location("TP.HCM, Việt Nam")
                 .build();
 
         // ── 3. Zone ──
         Zone zone = Zone.builder()
-                .id("1")
-                .greenhouseId("1")
+                .zoneId(1)
+                .greenhouseId("alpha")
                 .name("Khu Vực 1")
                 .lastTemperature(28.5)
                 .lastHumidity(65.0)
@@ -101,10 +103,10 @@ public class DatabaseInitializer implements ApplicationListener<ApplicationReady
 
         // ── 4. Row ──
         Row row = Row.builder()
-                .id("1")
+                .rowId(1)
                 .zoneId("1")
-                .greenhouseId("1")
-                .name("Luống 1")
+                .greenhouseId("alpha")
+                .name("Luống Cà Chua")
                 .plantType("Cà chua")
                 .currentMode("AUTO")
                 .lastSoilMoisture(45.0)
@@ -112,10 +114,43 @@ public class DatabaseInitializer implements ApplicationListener<ApplicationReady
                 .build();
 
         return userRepository.save(user)
-                .then(greenhouseRepository.save(gh))
-                .then(zoneRepository.save(zone))
-                .then(rowRepository.save(row))
-                .then(seedHistoricalData())
+                .flatMap(u -> {
+                    Greenhouse ghToSave = Greenhouse.builder()
+                            .greenhouseId("alpha")
+                            .ownerId(u.userId())
+                            .name("Nhà kính Alpha")
+                            .location("TP.HCM, Việt Nam")
+                            .build();
+                    return greenhouseRepository.save(ghToSave);
+                })
+                .flatMap(savedGh -> {
+                    Zone zToSave = Zone.builder()
+                            .zoneId(1)
+                            .greenhouseId(savedGh.id())
+                            .name("Khu Vực 1")
+                            .lastTemperature(28.5)
+                            .lastHumidity(65.0)
+                            .build();
+                    return zoneRepository.save(zToSave)
+                            .map(savedZ -> new Object[]{savedGh, savedZ});
+                })
+                .flatMap(objs -> {
+                    Greenhouse savedGh = (Greenhouse) objs[0];
+                    Zone savedZ = (Zone) objs[1];
+                    Row rToSave = Row.builder()
+                            .rowId(1)
+                            .zoneId(savedZ.id())
+                            .greenhouseId(savedGh.id())
+                            .name("Luống Cà Chua")
+                            .plantType("Cà chua")
+                            .currentMode("AUTO")
+                            .lastSoilMoisture(45.0)
+                            .pumpStatus("OFF")
+                            .build();
+                    return rowRepository.save(rToSave)
+                            .map(savedRow -> new Object[]{savedGh, savedZ, savedRow});
+                })
+                .flatMap(objs -> seedHistoricalData((Greenhouse) objs[0], (Zone) objs[1], (Row) objs[2]))
                 .doOnSuccess(v -> log.info("[DatabaseInitializer] Seeded: User(1), Greenhouse(1), Zone(1), Row(1)"));
     }
 
@@ -123,35 +158,36 @@ public class DatabaseInitializer implements ApplicationListener<ApplicationReady
      * Seeds 24 hours of DataRecord (temperature, humidity, soil_moisture)
      * and ControlLog entries (pump start/stop every 6h).
      */
-    private Mono<Void> seedHistoricalData() {
+    private Mono<Void> seedHistoricalData(Greenhouse gh, Zone z, Row r) {
         log.info("[DatabaseInitializer] Seeding 24h of historical data...");
 
         List<DataRecord> records = new ArrayList<>();
         List<ControlLog> logs = new ArrayList<>();
         Instant now = Instant.now();
 
+        String userId = gh.ownerId();
+
         for (int i = 24; i >= 0; i--) {
             Instant ts = now.minus(i, ChronoUnit.HOURS);
 
-            // Per Skill: full topic as deviceId, separate fields for IDs
-            String zTopic = "user_1/gh_1/z_1/temp";
-            String rTopic = "user_1/gh_1/z_1/r_1/soil";
+            String zTopic = "user_" + userId + "/gh_" + gh.greenhouseId() + "/z_" + z.zoneId() + "/temp";
+            String rTopic = "user_" + userId + "/gh_" + gh.greenhouseId() + "/z_" + z.zoneId() + "/r_" + r.rowId() + "/soil";
 
             // Zone-level: temperature & humidity
-            records.add(new DataRecord(null, zTopic, "1", "1", "1", null, "temperature", 25.0 + random.nextDouble() * 10, ts));
-            records.add(new DataRecord(null, zTopic, "1", "1", "1", null, "humidity", 50.0 + random.nextDouble() * 30, ts));
+            records.add(new DataRecord(null, zTopic, userId, gh.id(), z.id(), null, "temperature", 25.0 + random.nextDouble() * 10, ts));
+            records.add(new DataRecord(null, zTopic, userId, gh.id(), z.id(), null, "humidity", 50.0 + random.nextDouble() * 30, ts));
 
             // Row-level: soil moisture
-            records.add(new DataRecord(null, rTopic, "1", "1", "1", "1", "soil_moisture", 30.0 + random.nextDouble() * 40, ts));
+            records.add(new DataRecord(null, rTopic, userId, gh.id(), z.id(), r.id(), "soil_moisture", 30.0 + random.nextDouble() * 40, ts));
 
             // ControlLog every 6 hours
             if (i % 6 == 0) {
                 logs.add(ControlLog.builder()
                         .deviceId(rTopic)
-                        .userId("1")
-                        .greenhouseId("1")
-                        .zoneId("1")
-                        .rowId("1")
+                        .userId(userId)
+                        .greenhouseId(gh.id())
+                        .zoneId(z.id())
+                        .rowId(r.id())
                         .action(i % 12 == 0 ? "start" : "stop")
                         .source("AUTO")
                         .timestamp(ts.plus(30, ChronoUnit.MINUTES))

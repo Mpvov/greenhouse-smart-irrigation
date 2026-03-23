@@ -59,7 +59,6 @@ public class GreenhouseController {
         if (userId == null) return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
 
         Greenhouse toCreate = Greenhouse.builder()
-                .id(greenhouse.name())
                 .ownerId(userId)
                 .name(greenhouse.name())
                 .location(greenhouse.location())

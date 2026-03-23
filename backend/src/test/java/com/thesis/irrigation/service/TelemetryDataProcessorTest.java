@@ -9,6 +9,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.thesis.irrigation.domain.repository.DataRecordRepository;
+import com.thesis.irrigation.domain.repository.GreenhouseRepository;
+import com.thesis.irrigation.domain.repository.ZoneRepository;
+import com.thesis.irrigation.domain.repository.RowRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mockito.ArgumentMatchers;
 import static org.mockito.Mockito.when;
@@ -19,13 +22,19 @@ public class TelemetryDataProcessorTest {
 
     @Mock
     private DataRecordRepository dataRecordRepository;
+    @Mock
+    private GreenhouseRepository greenhouseRepository;
+    @Mock
+    private ZoneRepository zoneRepository;
+    @Mock
+    private RowRepository rowRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private TelemetryDataProcessor processor;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        processor = new TelemetryDataProcessor(dataRecordRepository, objectMapper);
+        processor = new TelemetryDataProcessor(dataRecordRepository, greenhouseRepository, zoneRepository, rowRepository, objectMapper);
     }
 
     @Test
@@ -38,8 +47,9 @@ public class TelemetryDataProcessorTest {
                 });
 
         // Mock a stream of MQTT TelemetryData
-        TelemetryData msg1 = new TelemetryData("userA/gh1/z1/r1/soil", "{\"v\":45.0}");
-        TelemetryData msg2 = new TelemetryData("userA/gh1/z1/r1/pump", "{\"v\":1.0}");
+        // userA/gh_1/z_1/r_1/soil
+        TelemetryData msg1 = new TelemetryData("userA/gh_1/z_1/r_1/soil", "{\"v\":45.0}");
+        TelemetryData msg2 = new TelemetryData("userA/gh_1/z_1/r_1/pump", "{\"v\":1.0}");
 
         Flux<TelemetryData> sourceFlux = Flux.just(msg1, msg2);
 

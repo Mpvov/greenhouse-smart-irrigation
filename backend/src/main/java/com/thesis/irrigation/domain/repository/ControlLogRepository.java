@@ -11,6 +11,7 @@ import java.time.Instant;
 @Repository
 public interface ControlLogRepository extends ReactiveMongoRepository<ControlLog, String> {
     Flux<ControlLog> findByDeviceIdAndTimestampBetweenOrderByTimestampAsc(String deviceId, Instant from, Instant to);
+    Flux<ControlLog> findByRowIdAndTimestampBetweenOrderByTimestampAsc(String rowId, Instant from, Instant to);
 
     Mono<Void> deleteByGreenhouseId(String greenhouseId);
 }

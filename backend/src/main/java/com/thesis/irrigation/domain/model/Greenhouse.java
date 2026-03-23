@@ -12,7 +12,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public record Greenhouse(
         @Id
         String id,
-        String ownerId,   // FK → User.id (used to build MQTT topic: {ownerId}/{id}/#)
+        String greenhouseId,
+        String ownerId,   // FK → User.id
         String name,
         String location
 ) {}

@@ -1,0 +1,126 @@
+[
+    {
+        "id": "caa7edc451bdca23",
+        "type": "tab",
+        "label": "Upstream",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "9129beb0babcc0c8",
+        "type": "comment",
+        "z": "caa7edc451bdca23",
+        "name": "WARNING: please check you have started this container with a volume that is mounted to /data\\n otherwise any flow changes are lost when you redeploy or upgrade the container\\n (e.g. upgrade to a more recent node-red docker image).\\n  If you are using named volumes you can ignore this warning.\\n Double click or see info side panel to learn how to start Node-RED in Docker to save your work",
+        "info": "\nTo start docker with a bind mount volume (-v option), for example:\n\n```\ndocker run -it -p 1880:1880 -v /home/user/node_red_data:/data --name mynodered nodered/node-red\n```\n\nwhere `/home/user/node_red_data` is a directory on your host machine where you want to store your flows.\n\nIf you do not do this then you can experiment and redploy flows, but if you restart or upgrade the container the flows will be disconnected and lost. \n\nThey will still exist in a hidden data volume, which can be recovered using standard docker techniques, but that is much more complex than just starting with a named volume as described above.",
+        "x": 350,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "9e6e05945ba92594",
+        "type": "mqtt in",
+        "z": "caa7edc451bdca23",
+        "name": "",
+        "topic": "#",
+        "qos": "2",
+        "datatype": "utf8",
+        "broker": "067c2d7e08c5e5c7",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 380,
+        "wires": [
+            [
+                "ca71bc34801529a2"
+            ]
+        ]
+    },
+    {
+        "id": "ca71bc34801529a2",
+        "type": "function",
+        "z": "caa7edc451bdca23",
+        "name": "function 1",
+        "func": "// 1. Lấy giá trị thô từ Yolo:bit\nlet rawValue = parseFloat(msg.payload);\nif (isNaN(rawValue)) return null; // Bỏ qua nếu dữ liệu rác\n\n// 2. Phân tích Topic nội bộ (VD: z_1/r_1/soil)\nlet internalTopic = msg.topic;\nlet topicParts = internalTopic.split('/');\nlet metricName = topicParts[topicParts.length - 1]; // Lấy chữ 'soil' hoặc 'temp'\n\n// 3. Xác định đơn vị (Unit) theo chuẩn SenML\nlet unit = \"\";\nif (metricName === \"temp\") unit = \"Cel\";\nelse if (metricName === \"humidity\" || metricName === \"soil\") unit = \"%RH\";\nelse if (metricName === \"pump\") unit = \"boolean\";\n\n// 4. Đóng gói thành SenML JSON\nlet senml = {\n    \"bn\": \"user_admin/gh_alpha/\" + internalTopic + \"/\",\n    \"e\": [\n        {\n            \"n\": metricName,\n            \"u\": unit,\n            \"v\": rawValue,\n            \"t\": Math.floor(Date.now() / 1000) // Timestamp hiện tại\n        }\n    ]\n};\n\n// 5. Chuẩn bị bản tin để gửi lên Cloud\nmsg.payload = senml;\n// Nối thêm tiền tố để ra Shared Topic\nmsg.topic = \"user_admin/gh_alpha/\" + internalTopic;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 380,
+        "wires": [
+            [
+                "973ffac5499d59f5",
+                "9c703cd2539593f1"
+            ]
+        ]
+    },
+    {
+        "id": "973ffac5499d59f5",
+        "type": "mqtt out",
+        "z": "caa7edc451bdca23",
+        "name": "",
+        "topic": "",
+        "qos": "1",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "067c2d7e08c5e5c7",
+        "x": 690,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "9c703cd2539593f1",
+        "type": "debug",
+        "z": "caa7edc451bdca23",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 620,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "067c2d7e08c5e5c7",
+        "type": "mqtt-broker",
+        "name": "Fog Local Broker",
+        "broker": "fog-local-broker",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    }
+]

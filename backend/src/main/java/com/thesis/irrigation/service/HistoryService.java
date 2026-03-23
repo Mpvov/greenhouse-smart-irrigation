@@ -25,8 +25,9 @@ public class HistoryService {
 
         return rowRepository.findById(rowId)
                 .flatMap(row -> Mono.zip(
-                        dataRecordRepository.findByRowOrZoneParent(rowId, row.zoneId(), from, to).collectList(),
-                        controlLogRepository.findByDeviceIdAndTimestampBetweenOrderByTimestampAsc(rowId, from, to).collectList()
-                ).map(tuple -> new HistoryResponse(rowId, tuple.getT1(), tuple.getT2())));
+                        dataRecordRepository.findByRowOrZoneParent(row.id(), row.zoneId(), from, to).collectList(),
+                        controlLogRepository.findByRowIdAndTimestampBetweenOrderByTimestampAsc(row.id(), from, to)
+                                .collectList())
+                        .map(tuple -> new HistoryResponse(rowId, tuple.getT1(), tuple.getT2())));
     }
 }

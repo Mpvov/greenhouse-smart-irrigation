@@ -12,6 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public record Row(
         @Id
         String id,
+        Integer rowId,
         String zoneId,
         String greenhouseId,
         String name,

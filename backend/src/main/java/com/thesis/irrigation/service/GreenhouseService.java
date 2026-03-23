@@ -33,8 +33,18 @@ public class GreenhouseService {
     }
 
     public Mono<Greenhouse> createGreenhouse(Greenhouse greenhouse) {
-        return greenhouseRepository.save(greenhouse)
-                .doOnNext(saved -> mqttSubscriptionManager.addSubscription(saved.ownerId(), saved.id()));
+        // Create a URL-safe string from the name to use as greenhouseId
+        String slug = greenhouse.name().toLowerCase().replaceAll("[^a-z0-9]", "_");
+        
+        Greenhouse toSave = Greenhouse.builder()
+                .greenhouseId(slug)
+                .ownerId(greenhouse.ownerId())
+                .name(greenhouse.name())
+                .location(greenhouse.location())
+                .build();
+                
+        return greenhouseRepository.save(toSave)
+                .doOnNext(saved -> mqttSubscriptionManager.addSubscription(saved.ownerId(), saved.greenhouseId()));
     }
 
     public Mono<Greenhouse> updateGreenhouse(String id, Greenhouse greenhouse, String ownerId) {
@@ -43,6 +53,7 @@ public class GreenhouseService {
                 .flatMap(existing -> {
                     Greenhouse updated = Greenhouse.builder()
                             .id(id)
+                            .greenhouseId(existing.greenhouseId())
                             .ownerId(ownerId)
                             .name(greenhouse.name())
                             .location(greenhouse.location())
@@ -77,7 +88,7 @@ public class GreenhouseService {
                             .then(greenhouseRepository.delete(gh))
                             .doOnSuccess(v -> {
                                 log.info("[GreenhouseService] ✅ Cascading delete complete for Greenhouse: {}", id);
-                                mqttSubscriptionManager.removeSubscription(ownerId, id);
+                                mqttSubscriptionManager.removeSubscription(ownerId, gh.greenhouseId());
                             });
                 });
     }

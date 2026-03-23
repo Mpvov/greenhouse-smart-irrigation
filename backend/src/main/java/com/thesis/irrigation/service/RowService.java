@@ -42,21 +42,26 @@ public class RowService {
         return zoneRepository.findById(row.zoneId())
                 .flatMap(zone -> greenhouseRepository.findById(zone.greenhouseId())
                         .filter(gh -> gh.ownerId().equals(ownerId))
-                        .flatMap(gh -> {
-                            Row toSave = Row.builder()
-                                    .id(row.name())
-                                    .zoneId(row.zoneId())
-                                    .greenhouseId(zone.greenhouseId())
-                                    .name(row.name())
-                                    .plantType(row.plantType())
-                                    .currentMode(row.currentMode() != null ? row.currentMode() : "AUTO")
-                                    .thresholdMin(row.thresholdMin())
-                                    .thresholdMax(row.thresholdMax())
-                                    .lastSoilMoisture(0.0)
-                                    .pumpStatus("OFF")
-                                    .build();
-                            return rowRepository.save(toSave);
-                        }))
+                        .flatMap(gh -> rowRepository.findByZoneId(zone.id())
+                                .map(Row::rowId)
+                                .reduce(Math::max)
+                                .defaultIfEmpty(0)
+                                .map(maxId -> maxId + 1)
+                                .flatMap(nextId -> {
+                                    Row toSave = Row.builder()
+                                            .rowId(nextId)
+                                            .zoneId(row.zoneId())
+                                            .greenhouseId(zone.greenhouseId())
+                                            .name(row.name())
+                                            .plantType(row.plantType())
+                                            .currentMode(row.currentMode() != null ? row.currentMode() : "AUTO")
+                                            .thresholdMin(row.thresholdMin())
+                                            .thresholdMax(row.thresholdMax())
+                                            .lastSoilMoisture(0.0)
+                                            .pumpStatus("OFF")
+                                            .build();
+                                    return rowRepository.save(toSave);
+                                })))
                 .switchIfEmpty(Mono.error(new RuntimeException("Zone not found or access denied")));
     }
 
@@ -65,6 +70,7 @@ public class RowService {
                 .flatMap(existing -> {
                     Row updated = Row.builder()
                             .id(id)
+                            .rowId(existing.rowId())
                             .zoneId(existing.zoneId())
                             .greenhouseId(existing.greenhouseId())
                             .name(row.name())

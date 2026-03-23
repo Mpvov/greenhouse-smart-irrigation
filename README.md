@@ -25,4 +25,4 @@ docker-compose up --build -d
 - **Cloud MQTT Broker:** Kết nối qua `tcp://localhost:1884`.
 - **Fog MQTT Broker (Local):** Kết nối qua `tcp://localhost:1883`.
 
-***Vào folder docs để tìm hiểu thêm***
+***Vào folder docs để tìm hiểu thêm về cách giả lập Edge và Fog Node***

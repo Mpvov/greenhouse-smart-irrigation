@@ -64,14 +64,8 @@ public class TelemetryWebSocketHandler implements WebSocketHandler {
                             }
                         })
                         .map(message -> {
-                            // Forward only the "data" portion (strip the userId wrapper)
-                            try {
-                                JsonNode node = objectMapper.readTree(message.getMessage());
-                                JsonNode data = node.path("data");
-                                return session.textMessage(data.toString());
-                            } catch (Exception e) {
-                                return session.textMessage(message.getMessage());
-                            }
+                            // Forward the entire enriched message so the frontend gets ghId, zId, and rId
+                            return session.textMessage(message.getMessage());
                         })
                         .doOnNext(msg -> log.debug("[WebSocket] Sending to userId={}, session={}", userId, sessionId))
         );

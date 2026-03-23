@@ -9,5 +9,6 @@ import reactor.core.publisher.Mono;
 @Repository
 public interface ZoneRepository extends ReactiveMongoRepository<Zone, String> {
     Flux<Zone> findByGreenhouseId(String greenhouseId);
+    Mono<Zone> findByGreenhouseIdAndZoneId(String greenhouseId, Integer zoneId);
     Mono<Void> deleteByGreenhouseId(String greenhouseId);
 }

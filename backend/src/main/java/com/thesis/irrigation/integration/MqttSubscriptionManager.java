@@ -30,7 +30,7 @@ public class MqttSubscriptionManager implements ApplicationListener<ApplicationR
         log.info("[MqttSubscriptionManager] Querying DB for Greenhouses to build dynamic MQTT topics...");
 
         greenhouseRepository.findAll()
-                .doOnNext(gh -> addSubscription(gh.ownerId(), gh.id()))
+                .doOnNext(gh -> addSubscription(gh.ownerId(), gh.greenhouseId()))
                 .doOnComplete(() -> log.info("[MqttSubscriptionManager] ✅ Dynamic MQTT subscription complete."))
                 .doOnError(err -> log.error("[MqttSubscriptionManager] Error querying greenhouses: {}", err.getMessage()))
                 .subscribe(); // Use subscribe() instead of blockLast() to avoid blocking if possible, but this is startup

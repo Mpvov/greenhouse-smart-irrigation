@@ -13,7 +13,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 public record User(
         @Id
-        String id,
+        String userId,
 
         @Indexed(unique = true)
         String email,

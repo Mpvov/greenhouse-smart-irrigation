@@ -8,11 +8,11 @@ import paho.mqtt.client as mqtt
 # ==========================================
 # Nếu Mosquitto chạy trên cùng máy tính này (qua Docker), dùng 127.0.0.1
 # Nếu EC2, thay bằng IP Public của EC2
-BROKER_ADDRESS = "10.230.146.72" 
+BROKER_ADDRESS = "10.118.205.72" 
 PORT = 1883
 TOPIC_TELEMETRY_TEMP = "z_1/temp"
 TOPIC_TELEMETRY_HUMI = "z_1/humidity"
-TOPIC_TELEMETRY_SOIL = "z_1/r_2/soil"
+TOPIC_TELEMETRY_SOIL = "z_1/r_1/soil"
 
 # Hàm callback khi kết nối thành công tới Broker
 def on_connect(client, userdata, flags, reason_code, properties=None):

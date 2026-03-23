@@ -111,6 +111,7 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       MQTT_BROKER_URL: tcp://cloud-remote-broker:1883
       SPRING_PROFILES_ACTIVE: docker
+      DEBUG: "true"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -191,7 +192,6 @@ services:
       - node_red_data:/data
     networks:
       - fog-net # Kết nối với fog-local-broker
-      - cloud-net # Kết nối với cloud-remote-broker
     depends_on:
       - fog-local-broker
     restart: unless-stopped

@@ -11,9 +11,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Slf4j
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -31,29 +33,38 @@ public class AuthController {
         String email = request.email();
         if (email == null || !email.contains("@")) {
             return Mono.just(ResponseEntity.badRequest()
-                    .body(BaseResponse.<AuthResponse>error(HttpStatus.BAD_REQUEST.value(), "Invalid email format")));
+                    .body(BaseResponse.error(HttpStatus.BAD_REQUEST.value(), "Invalid email format")));
         }
 
         String suggestedId = email.split("@")[0];
+        log.info("[AuthController] Attempting to register user: {} (ID: {})", email, suggestedId);
 
-        // Ensure both ID (prefix) and Email are unique
         return userRepository.findById(suggestedId)
-                .flatMap(foundById -> Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(BaseResponse.<AuthResponse>error(HttpStatus.CONFLICT.value(), "User ID (email prefix) already exists"))))
+                .flatMap(foundById -> {
+                    log.warn("[AuthController] Registration failed: ID collision for {}", suggestedId);
+                    return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(BaseResponse.<AuthResponse>error(HttpStatus.CONFLICT.value(), "User ID already exists")));
+                })
                 .switchIfEmpty(userRepository.findByEmail(email)
-                        .flatMap(foundByEmail -> Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
-                                .body(BaseResponse.<AuthResponse>error(HttpStatus.CONFLICT.value(), "Email already exists")))))
+                        .flatMap(foundByEmail -> {
+                            log.warn("[AuthController] Registration failed: Email collision for {}", email);
+                            return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
+                                    .body(BaseResponse.<AuthResponse>error(HttpStatus.CONFLICT.value(), "Email already exists")));
+                        }))
                 .switchIfEmpty(Mono.defer(() -> {
                     User newUser = User.builder()
-                            .id(suggestedId)
+                            .userId(suggestedId)
                             .email(email)
                             .passwordHash(passwordEncoder.encode(request.password()))
                             .role("OWNER")
                             .build();
+
                     return userRepository.save(newUser)
+                            .doOnNext(saved -> log.info("[AuthController] ✅ User successfully saved to MongoDB: {}", saved.userId()))
+                            .doOnError(err -> log.error("[AuthController] 🛑 Failed to save user: {}", err.getMessage()))
                             .map(savedUser -> {
-                                String token = jwtUtil.generateToken(savedUser.id(), savedUser.email());
-                                return ResponseEntity.ok(BaseResponse.success("Success", new AuthResponse(token)));
+                                String token = jwtUtil.generateToken(savedUser.userId(), savedUser.email());
+                                return ResponseEntity.ok(BaseResponse.success("Registration successful", new AuthResponse(token)));
                             });
                 }));
     }
@@ -63,7 +74,7 @@ public class AuthController {
         return userRepository.findByEmail(request.email())
                 .filter(user -> passwordEncoder.matches(request.password(), user.passwordHash()))
                 .map(user -> {
-                    String token = jwtUtil.generateToken(user.id(), user.email());
+                    String token = jwtUtil.generateToken(user.userId(), user.email());
                     return ResponseEntity.ok(BaseResponse.success("Success", new AuthResponse(token)));
                 })
                 .switchIfEmpty(Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)

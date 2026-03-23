@@ -38,16 +38,21 @@ public class ZoneService {
     public Mono<Zone> createZone(Zone zone, String ownerId) {
         return greenhouseRepository.findById(zone.greenhouseId())
                 .filter(gh -> gh.ownerId().equals(ownerId))
-                .flatMap(gh -> {
-                    Zone toSave = Zone.builder()
-                            .id(zone.name())
-                            .greenhouseId(zone.greenhouseId())
-                            .name(zone.name())
-                            .lastTemperature(null)
-                            .lastHumidity(null)
-                            .build();
-                    return zoneRepository.save(toSave);
-                })
+                .flatMap(gh -> zoneRepository.findByGreenhouseId(zone.greenhouseId())
+                        .map(Zone::zoneId)
+                        .reduce(Math::max)
+                        .defaultIfEmpty(0)
+                        .map(maxId -> maxId + 1)
+                        .flatMap(nextId -> {
+                            Zone toSave = Zone.builder()
+                                    .zoneId(nextId)
+                                    .greenhouseId(zone.greenhouseId())
+                                    .name(zone.name())
+                                    .lastTemperature(null)
+                                    .lastHumidity(null)
+                                    .build();
+                            return zoneRepository.save(toSave);
+                        }))
                 .switchIfEmpty(Mono.error(new RuntimeException("Greenhouse not found or access denied")));
     }
 
@@ -56,6 +61,7 @@ public class ZoneService {
                 .flatMap(existing -> {
                     Zone updated = Zone.builder()
                             .id(id)
+                            .zoneId(existing.zoneId())
                             .greenhouseId(existing.greenhouseId())
                             .name(zone.name())
                             .lastTemperature(existing.lastTemperature())

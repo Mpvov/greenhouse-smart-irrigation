@@ -93,7 +93,7 @@ public class RowController {
 
                             return controlLogRepository.save(log)
                                     .flatMap(saved -> {
-                                        String topic = tenantId + "/" + row.greenhouseId() + "/" + row.zoneId() + "/" + row.id() + "/pump/command";
+                                        String topic = tenantId + "/" + row.greenhouseId() + "/" + row.zoneId() + "/" + row.rowId() + "/pump/command";
                                         String payload = "{\"cmd\":\"" + request.action() + "\"}";
                                         mqttGateway.sendToMqtt(topic, payload);
                                         return Mono.just(ResponseEntity.ok().<Void>build());

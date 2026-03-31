@@ -3,7 +3,6 @@ package com.thesis.irrigation.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thesis.irrigation.domain.model.DataRecord;
-import com.thesis.irrigation.domain.model.Row;
 import com.thesis.irrigation.domain.model.Zone;
 import com.thesis.irrigation.domain.repository.DataRecordRepository;
 import com.thesis.irrigation.domain.repository.RowRepository;
@@ -11,6 +10,10 @@ import com.thesis.irrigation.domain.repository.ZoneRepository;
 import com.thesis.irrigation.domain.repository.GreenhouseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -28,6 +31,7 @@ public class TelemetryService {
     private final RowRepository rowRepository;
     private final ZoneRepository zoneRepository;
     private final GreenhouseRepository greenhouseRepository;
+    private final ReactiveMongoTemplate mongoTemplate;
     private final ReactiveRedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -50,13 +54,16 @@ public class TelemetryService {
             String deviceId = root.has("bn") ? root.get("bn").asText() : topic;
 
             String[] rawParts = deviceId.split("/");
-            // Keep the raw userId (e.g., 'user_1' or 'user_tp1') instead of stripping 'user_'
+            // Keep the raw userId (e.g., 'user_1' or 'user_tp1') instead of stripping
+            // 'user_'
             // We use this raw ID to query MongoDB's User collection directly.
             String rawUserId = rawParts.length > 0 ? rawParts[0] : null;
             // The frontend logic expects "userId" to match the database exactly
-            // BUT if rawUserId is like "user_user_1", we only strip ONE "user_" if it was double prefixed
+            // BUT if rawUserId is like "user_user_1", we only strip ONE "user_" if it was
+            // double prefixed
             // Wait, MqttSubscriptionManager appends "user_" + ownerId
-            // So if ownerId is "tp1", topic is "user_tp1/...". If ownerId is "user_1", topic is "user_user_1/..."
+            // So if ownerId is "tp1", topic is "user_tp1/...". If ownerId is "user_1",
+            // topic is "user_user_1/..."
             String dbOwnerId = extractId(rawUserId, "user_"); // This gives "tp1" or "user_1" exactly as in DB!
 
             String ghStr = rawParts.length > 1 ? extractId(rawParts[1], "gh_") : null;
@@ -87,28 +94,34 @@ public class TelemetryService {
                             enrichedPayload = objectMapper.writeValueAsString(
                                     objectMapper.createObjectNode()
                                             .put("userId", dbOwnerId)
-                                            .put("ghId", ids.ghId) 
-                                            .put("zId", ids.zId)   
-                                            .put("rId", ids.rId)   
+                                            .put("ghId", ids.ghId)
+                                            .put("zId", ids.zId)
+                                            .put("rId", ids.rId)
                                             .set("data", root));
                         } catch (Exception e) {
                             enrichedPayload = payload;
                         }
 
                         Mono<Long> hotPath = redisTemplate.convertAndSend(REDIS_TOPIC, enrichedPayload)
-                                .doOnSuccess(v -> log.debug("[Hot Path] Published to Redis. ownerId={} rId={}", dbOwnerId, ids.rId))
-                                .onErrorResume(e -> Mono.empty()); 
+                                .doOnSuccess(v -> log.debug("[Hot Path] Published to Redis. ownerId={} rId={}",
+                                        dbOwnerId, ids.rId))
+                                .onErrorResume(e -> Mono.empty());
 
                         // ── Cold Path: Parse SenML and persist ──
-                        List<DataRecord> records = buildDataRecords(deviceId, root, dbOwnerId, ids.ghId, ids.zId, ids.rId);
+                        List<DataRecord> records = buildDataRecords(deviceId, root, dbOwnerId, ids.ghId, ids.zId,
+                                ids.rId);
                         Mono<Void> coldPath = Mono.empty();
                         if (!records.isEmpty()) {
                             coldPath = dataRecordRepository.saveAll(records)
                                     .doOnNext(saved -> log.info("[Cold Path] Saved DataRecord: {}", saved))
-                                    .doOnComplete(() -> log.info("[Cold Path] Successfully flushed records for: {}", deviceId))
-                                    .doOnError(err -> log.error("[Cold Path] Failed to save records for {}", deviceId, err))
+                                    .doOnComplete(() -> log.info("[Cold Path] Successfully flushed records for: {}",
+                                            deviceId))
+                                    .doOnError(err -> log.error("[Cold Path] Failed to save records for {}", deviceId,
+                                            err))
                                     .then(updateLastKnownState(ids.zId, ids.rId, records))
-                                    .doOnSuccess(res -> log.info("[Cold Path] Updated last known state for: zId={}, rId={}", ids.zId, ids.rId))
+                                    .doOnSuccess(
+                                            res -> log.info("[Cold Path] Updated last known state for: zId={}, rId={}",
+                                                    ids.zId, ids.rId))
                                     .then();
                         } else {
                             log.warn("[Cold Path] buildDataRecords returned empty for deviceId: {}", deviceId);
@@ -123,7 +136,8 @@ public class TelemetryService {
     }
 
     private Integer parseOrNull(String str) {
-        if (str == null) return null;
+        if (str == null)
+            return null;
         try {
             return Integer.parseInt(str);
         } catch (NumberFormatException e) {
@@ -133,19 +147,27 @@ public class TelemetryService {
 
     private static class ResolvedIds {
         String ghId, zId, rId;
-        ResolvedIds(String gh, String z, String r) { ghId = gh; zId = z; rId = r; }
+
+        ResolvedIds(String gh, String z, String r) {
+            ghId = gh;
+            zId = z;
+            rId = r;
+        }
     }
 
     private Mono<ResolvedIds> resolveIds(String userId, String ghStr, Integer zSeq, Integer rSeq) {
-        if (userId == null || ghStr == null) return Mono.just(new ResolvedIds(null, null, null));
+        if (userId == null || ghStr == null)
+            return Mono.just(new ResolvedIds(null, null, null));
 
         return greenhouseRepository.findByOwnerIdAndGreenhouseId(userId, ghStr)
                 .switchIfEmpty(greenhouseRepository.findByOwnerIdAndGreenhouseId("user_" + userId, ghStr))
                 .flatMap(gh -> {
-                    if (zSeq == null) return Mono.just(new ResolvedIds(gh.id(), null, null));
+                    if (zSeq == null)
+                        return Mono.just(new ResolvedIds(gh.id(), null, null));
                     return zoneRepository.findByGreenhouseIdAndZoneId(gh.id(), zSeq)
                             .flatMap(z -> {
-                                if (rSeq == null) return Mono.just(new ResolvedIds(gh.id(), z.id(), null));
+                                if (rSeq == null)
+                                    return Mono.just(new ResolvedIds(gh.id(), z.id(), null));
                                 return rowRepository.findByZoneIdAndRowId(z.id(), rSeq)
                                         .map(r -> new ResolvedIds(gh.id(), z.id(), r.id()))
                                         .defaultIfEmpty(new ResolvedIds(gh.id(), z.id(), null));
@@ -155,8 +177,8 @@ public class TelemetryService {
                 .defaultIfEmpty(new ResolvedIds(null, null, null));
     }
 
-    private List<DataRecord> buildDataRecords(String deviceId, JsonNode root, 
-                                              String userId, String ghId, String zId, String rId) {
+    private List<DataRecord> buildDataRecords(String deviceId, JsonNode root,
+            String userId, String ghId, String zId, String rId) {
         List<DataRecord> records = new ArrayList<>();
         try {
             JsonNode entries = root.path("e");
@@ -185,28 +207,26 @@ public class TelemetryService {
 
     private Mono<Void> updateLastKnownState(String zoneObjectId, String rowObjectId, List<DataRecord> records) {
         if (rowObjectId != null) {
-            return rowRepository.findById(rowObjectId)
-                    .flatMap(row -> {
-                        Row.RowBuilder builder = Row.builder()
-                                .id(row.id())
-                                .rowId(row.rowId())
-                                .zoneId(row.zoneId())
-                                .greenhouseId(row.greenhouseId())
-                                .name(row.name())
-                                .plantType(row.plantType())
-                                .currentMode(row.currentMode())
-                                .lastSoilMoisture(row.lastSoilMoisture())
-                                .pumpStatus(row.pumpStatus());
-                        for (DataRecord rec : records) {
-                            if ("soil".equals(rec.measurement()) || "soil_moisture".equals(rec.measurement())) {
-                                builder.lastSoilMoisture(rec.value());
-                            }
-                            if ("pump".equals(rec.measurement())) {
-                                builder.pumpStatus(rec.value() > 0 ? "ON" : "OFF");
-                            }
-                        }
-                        return rowRepository.save(builder.build()).then();
-                    });
+            Update update = new Update();
+            boolean hasUpdate = false;
+
+            for (DataRecord rec : records) {
+                if ("soil".equals(rec.measurement()) || "soil_moisture".equals(rec.measurement())) {
+                    update.set("lastSoilMoisture", rec.value());
+                    hasUpdate = true;
+                }
+                if ("pump".equals(rec.measurement()) || "pump_status".equals(rec.measurement())) {
+                    update.set("pumpStatus", rec.value() > 0 ? "ON" : "OFF");
+                    hasUpdate = true;
+                }
+            }
+
+            if (!hasUpdate) {
+                return Mono.empty();
+            }
+
+            Query q = Query.query(Criteria.where("_id").is(rowObjectId));
+            return mongoTemplate.updateFirst(q, update, "rows").then();
         } else if (zoneObjectId != null) {
             return zoneRepository.findById(zoneObjectId)
                     .flatMap(zone -> {
@@ -218,7 +238,8 @@ public class TelemetryService {
                                 .lastTemperature(zone.lastTemperature())
                                 .lastHumidity(zone.lastHumidity());
                         for (DataRecord rec : records) {
-                            if ("temperature".equals(rec.measurement()) || "t".equals(rec.measurement()) || "temp".equals(rec.measurement())) {
+                            if ("temperature".equals(rec.measurement()) || "t".equals(rec.measurement())
+                                    || "temp".equals(rec.measurement())) {
                                 builder.lastTemperature(rec.value());
                             }
                             if ("humidity".equals(rec.measurement()) || "h".equals(rec.measurement())) {
@@ -235,7 +256,8 @@ public class TelemetryService {
      * Extracts pure ID by stripping prefix (e.g., "user_123" -> "123").
      */
     private String extractId(String part, String prefix) {
-        if (part == null) return null;
+        if (part == null)
+            return null;
         if (part.startsWith(prefix)) {
             return part.substring(prefix.length());
         }

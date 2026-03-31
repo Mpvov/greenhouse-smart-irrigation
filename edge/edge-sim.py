@@ -8,18 +8,33 @@ import paho.mqtt.client as mqtt
 # ==========================================
 # Nếu Mosquitto chạy trên cùng máy tính này (qua Docker), dùng 127.0.0.1
 # Nếu EC2, thay bằng IP Public của EC2
-BROKER_ADDRESS = "10.118.205.72" 
+BROKER_ADDRESS = "10.0.207.172" 
 PORT = 1883
 TOPIC_TELEMETRY_TEMP = "z_1/temp"
 TOPIC_TELEMETRY_HUMI = "z_1/humidity"
+
+
 TOPIC_TELEMETRY_SOIL = "z_1/r_1/soil"
+TOPIC_TELEMETRY_PUMP_STATUS = "z_1/r_1/pump_status"
+TOPIC_COMMAND_PUMP = "z_1/r_1/pump"
+
+base_pump_status = 0
 
 # Hàm callback khi kết nối thành công tới Broker
 def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         print(f"✅ Đã kết nối thành công tới Broker {BROKER_ADDRESS}:{PORT}")
+        client.subscribe(TOPIC_COMMAND_PUMP, qos=1)
+        print(f"📡 Đang lắng nghe lệnh bơm tại topic: {TOPIC_COMMAND_PUMP}")
     else:
         print(f"❌ Kết nối thất bại, mã lỗi: {reason_code}")
+
+
+def on_message(client, userdata, msg):
+    global base_pump_status
+    if msg.topic == TOPIC_COMMAND_PUMP:
+        base_pump_status = 0 if base_pump_status == 1 else 1
+        print(f"🔁 Nhận lệnh pump, đổi trạng thái thành: {base_pump_status}")
 
 # ==========================================
 # 2. KHỞI TẠO MQTT CLIENT
@@ -27,6 +42,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
 # Sử dụng API version 2 của paho-mqtt (bản mới nhất)
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="Mock_YoloBit_01")
 client.on_connect = on_connect
+client.on_message = on_message
 
 # Nếu có dùng username/password thì bỏ comment dòng dưới:
 # client.username_pw_set("admin", "password123")
@@ -40,13 +56,13 @@ client.loop_start()
 # 3. VÒNG LẶP SINH DỮ LIỆU GIẢ (DATA GENERATOR)
 # ==========================================
 def publish_mock_sensor_data():
+    global base_pump_status
     print("🚀 Bắt đầu giả lập luồng dữ liệu cảm biến (Nhấn Ctrl+C để dừng)...")
     
     # Khởi tạo giá trị gốc
     base_temp = 28.0
     base_humi = 65.0
     base_soil = 45.0
-
     while True:
         try:
             # Sinh dữ liệu ngẫu nhiên (dao động nhẹ quanh giá trị gốc) để test biểu đồ
@@ -63,13 +79,18 @@ def publish_mock_sensor_data():
             payload_dict_temp = str(temp_val)
             payload_dict_humi = str(humi_val)
             payload_dict_soil = str(soil_val)
+            payload_dict_pump_status = str(base_pump_status)
             
             # Publish lên Broker
             client.publish(TOPIC_TELEMETRY_TEMP, payload_dict_temp, qos=1)
             client.publish(TOPIC_TELEMETRY_HUMI, payload_dict_humi, qos=1)
             client.publish(TOPIC_TELEMETRY_SOIL, payload_dict_soil, qos=1)
+            client.publish(TOPIC_TELEMETRY_PUMP_STATUS, payload_dict_pump_status, qos=1)
 
-            print(f"📤 Đã gửi: payload_dict_temp = {payload_dict_temp}, payload_dict_humi = {payload_dict_humi}, payload_dict_soil = {payload_dict_soil}    ")
+            print(
+                f"📤 Đã gửi: payload_dict_temp = {payload_dict_temp}, payload_dict_humi = {payload_dict_humi}, "
+                f"payload_dict_soil = {payload_dict_soil}, payload_dict_pump_status = {payload_dict_pump_status}"
+            )
             
         except KeyboardInterrupt:
             print("\n🛑 Đã dừng giả lập.")

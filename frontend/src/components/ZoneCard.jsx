@@ -1,7 +1,7 @@
 import React from 'react';
 import { RowCard } from './RowCard';
 
-export function ZoneCard({ zoneId, name, rows, telemetryData, initialTemp, initialHumidity }) {
+export function ZoneCard({ zoneId, name, rows, telemetryData, initialTemp, initialHumidity, onTogglePump, togglingRowIds = {} }) {
   // telemetryData[zoneId] is populated by useTelemetrySocket.js
   const zoneData = telemetryData[zoneId] || {};
   const temp = zoneData.temperature !== undefined ? zoneData.temperature : initialTemp;
@@ -27,7 +27,9 @@ export function ZoneCard({ zoneId, name, rows, telemetryData, initialTemp, initi
             mode={row.currentMode}
             initialSoilMoisture={row.lastSoilMoisture}
             initialPumpStatus={row.pumpStatus}
-            data={telemetryData[row.id] || {}} 
+            data={telemetryData[row.id] || {}}
+            onTogglePump={onTogglePump}
+            isTogglingPump={Boolean(togglingRowIds[row.id])}
           />
         ))}
       </div>

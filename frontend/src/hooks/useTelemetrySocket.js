@@ -103,9 +103,10 @@ export function useTelemetrySocket(url, token, fallbackUserId = "1") {
                 
                 // Map sensor names (t, h, soil) to readable keys
                 const rawName = e.n || '';
-                const key = (rawName === 't' || rawName === 'temp') ? 'temperature' : 
-                            (rawName === 'h' || rawName === 'humidity') ? 'humidity' : 
-                            (rawName === 'soil' || rawName === 'soil_moisture') ? 'soilMoisture' : rawName;
+                const key = (rawName === 't' || rawName === 'temp') ? 'temperature' :
+                            (rawName === 'h' || rawName === 'humidity') ? 'humidity' :
+                            (rawName === 'soil' || rawName === 'soil_moisture') ? 'soilMoisture' :
+                            (rawName === 'pump' || rawName === 'pump_status') ? 'pumpStatus' : rawName;
                 
                 let timestamp = Date.now();
                 if (e.t) {
@@ -113,7 +114,11 @@ export function useTelemetrySocket(url, token, fallbackUserId = "1") {
                   timestamp = String(e.t).length <= 10 ? Number(e.t) * 1000 : Number(e.t);
                 }
                 
-                newData[deviceId][key] = e.v;
+                const normalizedValue = key === 'pumpStatus'
+                  ? (Number(e.v) > 0 || String(e.v).toUpperCase() === 'ON' ? 'ON' : 'OFF')
+                  : e.v;
+
+                newData[deviceId][key] = normalizedValue;
                 newData[deviceId].lastUpdate = timestamp;
                 
                 // Alert logic

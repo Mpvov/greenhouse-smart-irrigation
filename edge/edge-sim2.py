@@ -9,13 +9,11 @@ import paho.mqtt.client as mqtt
 # Nếu EC2, thay bằng IP Public của EC2
 BROKER_ADDRESS = "10.0.236.176" 
 PORT = 1883
-TOPIC_TELEMETRY_TEMP = "z_1/temp"
-TOPIC_TELEMETRY_HUMI = "z_1/humidity"
 
-#Row 1
-TOPIC_TELEMETRY_SOIL = "z_1/r_1/soil"
-TOPIC_TELEMETRY_PUMP_STATUS = "z_1/r_1/pump_status"
-TOPIC_COMMAND_PUMP = "z_1/r_1/pump"
+#Row 2
+TOPIC_TELEMETRY_SOIL = "z_1/r_2/soil"
+TOPIC_TELEMETRY_PUMP_STATUS = "z_1/r_2/pump_status"
+TOPIC_COMMAND_PUMP = "z_1/r_2/pump"
 
 
 
@@ -69,37 +67,26 @@ def publish_mock_sensor_data():
     print("🚀 Bắt đầu giả lập luồng dữ liệu cảm biến (Nhấn Ctrl+C để dừng)...")
     
     # Khởi tạo giá trị gốc
-    base_temp = 28.0
-    base_humi = 65.0
     base_soil = 45.0
-    soil_val = base_soil
     while True:
         try:
             # Sinh dữ liệu ngẫu nhiên (dao động nhẹ quanh giá trị gốc) để test biểu đồ
-            temp_val = round(base_temp + random.uniform(-1.5, 1.5), 1)
-            humi_val = round(base_humi + random.uniform(-5.0, 5.0), 1)
-            soil_val = soil_val - 1
-            if base_pump_status == 1: # Nếu pump đang bật, soil sẽ tăng dần lên
-                soil_val =  soil_val+5;        
+            soil_val = round(base_soil + random.uniform(-2.0, 2.0), 1)
+            
             # Cố tình tạo ra một spike (đột biến) để test ngoại lệ E2/E3 lâu lâu 1 lần
-            # if random.randint(1, 20) == 20: 
-            #     soil_val = 100.0 # Lỗi cảm biến (E3)
-            #     print("⚠️ [MÔ PHỎNG LỖI CẢM BIẾN]")
+            if random.randint(1, 20) == 20: 
+                soil_val = 100.0 # Lỗi cảm biến (E3)
+                print("⚠️ [MÔ PHỎNG LỖI CẢM BIẾN]")
 
             # Tạo Payload Dictionary
-            payload_dict_temp = str(temp_val)
-            payload_dict_humi = str(humi_val)
             payload_dict_soil = str(soil_val)
             payload_dict_pump_status = str(base_pump_status)
             
             # Publish lên Broker
-            client.publish(TOPIC_TELEMETRY_TEMP, payload_dict_temp, qos=1)
-            client.publish(TOPIC_TELEMETRY_HUMI, payload_dict_humi, qos=1)
             client.publish(TOPIC_TELEMETRY_SOIL, payload_dict_soil, qos=1)
             client.publish(TOPIC_TELEMETRY_PUMP_STATUS, payload_dict_pump_status, qos=1)
 
             print(
-                f"📤 Đã gửi: payload_dict_temp = {payload_dict_temp}, payload_dict_humi = {payload_dict_humi}, "
                 f"payload_dict_soil = {payload_dict_soil}, payload_dict_pump_status = {payload_dict_pump_status}"
             )
             

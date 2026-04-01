@@ -1,6 +1,9 @@
 package com.thesis.irrigation.service;
 
+import com.thesis.irrigation.domain.dto.ControlRequest;
 import com.thesis.irrigation.domain.model.Row;
+import com.thesis.irrigation.domain.model.Greenhouse;
+import com.thesis.irrigation.domain.model.Zone;
 import com.thesis.irrigation.domain.repository.DeviceRepository;
 import com.thesis.irrigation.domain.repository.GreenhouseRepository;
 import com.thesis.irrigation.domain.repository.RowRepository;
@@ -23,6 +26,7 @@ public class RowService {
     private final GreenhouseRepository greenhouseRepository;
     private final DeviceRepository deviceRepository;
     private final ScheduleRepository scheduleRepository;
+    private final IrrigationService irrigationService;
 
     public Flux<Row> getByZone(String zoneId, String ownerId) {
         return zoneRepository.findById(zoneId)
@@ -55,6 +59,8 @@ public class RowService {
                                             .name(row.name())
                                             .plantType(row.plantType())
                                             .currentMode(row.currentMode() != null ? row.currentMode() : "AUTO")
+                                            .thresholdEnabled(row.thresholdEnabled() != null ? row.thresholdEnabled()
+                                                    : Boolean.FALSE)
                                             .thresholdMin(row.thresholdMin())
                                             .thresholdMax(row.thresholdMax())
                                             .lastSoilMoisture(0.0)
@@ -68,6 +74,10 @@ public class RowService {
     public Mono<Row> updateRow(String id, Row row, String ownerId) {
         return getById(id, ownerId)
                 .flatMap(existing -> {
+                    Boolean thresholdEnabled = row.thresholdEnabled() != null
+                            ? row.thresholdEnabled()
+                            : (existing.thresholdEnabled() != null ? existing.thresholdEnabled() : Boolean.FALSE);
+
                     Row updated = Row.builder()
                             .id(id)
                             .rowId(existing.rowId())
@@ -76,6 +86,7 @@ public class RowService {
                             .name(row.name())
                             .plantType(row.plantType())
                             .currentMode(row.currentMode())
+                            .thresholdEnabled(thresholdEnabled)
                             .thresholdMin(row.thresholdMin())
                             .thresholdMax(row.thresholdMax())
                             .lastSoilMoisture(existing.lastSoilMoisture())
@@ -97,4 +108,22 @@ public class RowService {
                     return deleteDevices.then(deleteSchedules).then(rowRepository.delete(row));
                 });
     }
+
+    public Mono<Void> controlPump(String rowId, String userId, ControlRequest request) {
+        return getById(rowId, userId)
+                .switchIfEmpty(Mono.error(new org.springframework.security.access.AccessDeniedException(
+                        "Row not found or access denied")))
+                .flatMap(row -> zoneRepository.findById(row.zoneId())
+                        .switchIfEmpty(Mono.error(new IllegalStateException("Zone not found")))
+                        .flatMap(zone -> greenhouseRepository.findById(zone.greenhouseId())
+                                .switchIfEmpty(Mono.error(new IllegalStateException("Greenhouse not found")))
+                                .flatMap(greenhouse -> irrigationService.controlPumpManual(
+                                        row,
+                                        zone,
+                                        greenhouse,
+                                        userId,
+                                        request != null && request.action() != null ? request.action() : "TOGGLE"))))
+                .then();
+    }
+
 }

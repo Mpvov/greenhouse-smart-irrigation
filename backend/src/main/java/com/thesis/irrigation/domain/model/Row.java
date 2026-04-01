@@ -10,16 +10,19 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "rows")
 @Builder
 public record Row(
-        @Id
-        String id,
-        Integer rowId,
-        String zoneId,
-        String greenhouseId,
-        String name,
-        String plantType,       // e.g., "Cà chua", "Dưa leo"
-        String currentMode,     // "AUTO" | "MANUAL"
-        Double thresholdMin,
-        Double thresholdMax,
-        Double lastSoilMoisture,
-        String pumpStatus       // "ON" | "OFF"
-) {}
+                @Id String id,
+                Integer rowId,
+                String zoneId,
+                String greenhouseId,
+                String name,
+                String plantType, // e.g., "Cà chua", "Dưa leo"
+                String currentMode, // "AUTO" | "MANUAL"
+
+                Boolean thresholdEnabled,
+                Double thresholdMin,
+                Double thresholdMax,
+
+                Double lastSoilMoisture,
+                String pumpStatus // "ON" | "OFF"
+) {
+}

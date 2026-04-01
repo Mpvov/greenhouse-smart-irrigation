@@ -30,7 +30,7 @@ graph TD
 
 - **Upstream (Dữ liệu Telemetry):** Cảm biến đọc dữ liệu -> Publish lên Fog Broker -> Node-RED Gateway nhận, mapping định dạng -> Publish lên Cloud Broker -> `MqttInboundFlow` của Spring Backend nhận bản tin -> Parse JSON và đẩy vào hệ thống xử lý (TelemetryService).
 - **Downstream (Dữ liệu Command/Config):** Người dùng bấm nút trên React UI -> Gọi REST API xuống Spring Backend -> `RowService/DeviceService` xử lý nghiệp vụ -> Đẩy lệnh xuống Cloud MQTT Broker -> Node-RED Gateway nhận lệnh, định tuyến lại xuống Fog Broker -> Kích hoạt Actuator tại Edge.
-
+  
 ## 3. Kiến trúc Hot Path và Cold Path
 Để đáp ứng cùng lúc 2 yêu cầu: "Giao diện phải mượt mà tức thì" và "Dữ liệu phải lưu trữ đầy đủ để phân tích", hệ thống tách luồng xử lý tại Backend thành 2 đường:
 - **Hot Path (Luồng Real-time):** Khi `TelemetryService` nhận dữ liệu mới, dữ liệu ngay lập tức được đẩy vào hệ thống **Redis Pub/Sub**. Lớp `TelemetryWebSocketHandler` đang duy trì các kết nối WebSockets với React client sẽ subscribe kênh Redis này, lập tức broadcast bản tin tới Frontend mà không cần chạm vào ổ cứng. Độ trễ luồng này rất thấp.

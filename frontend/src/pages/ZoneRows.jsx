@@ -88,11 +88,15 @@ const ZoneRows = ({ zoneId, greenhouseId }) => {
                 </div>
                 <div className="row-item__data">
                   <span className="moisture-val">💧 {row.lastSoilMoisture ? `${row.lastSoilMoisture.toFixed(1)}%` : '--'}</span>
+                  <span className={`threshold-val threshold-val--${row.thresholdEnabled ? 'on' : 'off'}`}>
+                    Threshold: {row.thresholdEnabled ? `${row.thresholdMin ?? '--'} - ${row.thresholdMax ?? '--'}%` : 'OFF'}
+                  </span>
                   <span className={`pump-val pump-val--${row.pumpStatus === 'ON' ? 'on' : 'off'}`}>
                     Pump: {row.pumpStatus}
                   </span>
                 </div>
                 <div className="row-item__actions">
+                  <button className="btn-mini" onClick={(e) => handleEditRow(e, row)} title="Set Threshold">🎯</button>
                   <button className="btn-mini" onClick={(e) => toggleManageSchedules(e, row.id)} title="Irrigation Schedules">🗓️</button>
                   <button className="btn-mini" onClick={(e) => toggleManageDevices(e, row.id)} title="Devices">🛠️</button>
                   <button className="btn-mini" onClick={(e) => handleEditRow(e, row)} title="Edit Row">✏️</button>

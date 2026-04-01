@@ -2,8 +2,6 @@ package com.thesis.irrigation.controller;
 
 import com.thesis.irrigation.common.BaseResponse;
 import com.thesis.irrigation.domain.model.Row;
-import com.thesis.irrigation.domain.repository.GreenhouseRepository;
-import com.thesis.irrigation.domain.repository.ZoneRepository;
 import com.thesis.irrigation.service.RowService;
 import com.thesis.irrigation.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +19,6 @@ public class RowController {
 
     private final RowService rowService;
     private final JwtUtil jwtUtil;
-    private final com.thesis.irrigation.domain.repository.ControlLogRepository controlLogRepository;
-    private final com.thesis.irrigation.config.MqttGateway mqttGateway;
-    private final ZoneRepository zoneRepository;
-    private final GreenhouseRepository greenhouseRepository;
 
     private String getUserIdFromHeader(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -94,39 +88,11 @@ public class RowController {
             return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
         }
 
-        return rowService.getById(id, userId)
-                .switchIfEmpty(Mono.error(new org.springframework.security.access.AccessDeniedException(
-                        "Row not found or access denied")))
-                .flatMap(row -> zoneRepository.findById(row.zoneId())
-                        .flatMap(zone -> greenhouseRepository.findById(zone.greenhouseId())
-                                .flatMap(greenhouse -> {
-                                    String topic = "user_" + userId
-                                            + "/gh_" + greenhouse.greenhouseId()
-                                            + "/z_" + zone.zoneId()
-                                            + "/r_" + row.rowId()
-                                            + "/pump";
-
-                                    String action = request != null && request.action() != null
-                                            ? request.action()
-                                            : "TOGGLE";
-
-                                    com.thesis.irrigation.domain.model.ControlLog log = com.thesis.irrigation.domain.model.ControlLog
-                                            .builder()
-                                            .deviceId(topic)
-                                            .userId(userId)
-                                            .greenhouseId(row.greenhouseId())
-                                            .zoneId(row.zoneId())
-                                            .rowId(row.id())
-                                            .action(action)
-                                            .source("USER")
-                                            .timestamp(java.time.Instant.now())
-                                            .build();
-
-                                    return controlLogRepository.save(log)
-                                            .flatMap(saved -> {
-                                                mqttGateway.sendToMqtt(topic, action);
-                                                return Mono.just(ResponseEntity.ok().<Void>build());
-                                            });
-                                })));
+        return rowService.controlPump(id, userId, request)
+                .thenReturn(ResponseEntity.ok().<Void>build())
+                .onErrorResume(org.springframework.security.access.AccessDeniedException.class,
+                        e -> Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build()))
+                .onErrorResume(IllegalStateException.class,
+                        e -> Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build()));
     }
 }

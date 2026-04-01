@@ -31,6 +31,7 @@ public class TelemetryService {
     private final RowRepository rowRepository;
     private final ZoneRepository zoneRepository;
     private final GreenhouseRepository greenhouseRepository;
+    private final IrrigationService irrigationService;
     private final ReactiveMongoTemplate mongoTemplate;
     private final ReactiveRedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -122,6 +123,8 @@ public class TelemetryService {
                                     .doOnSuccess(
                                             res -> log.info("[Cold Path] Updated last known state for: zId={}, rId={}",
                                                     ids.zId, ids.rId))
+                                    .then(irrigationService.applySoilThresholdControlIfNeeded(deviceId, dbOwnerId,
+                                            ids.rId, records))
                                     .then();
                         } else {
                             log.warn("[Cold Path] buildDataRecords returned empty for deviceId: {}", deviceId);

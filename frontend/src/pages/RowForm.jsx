@@ -8,6 +8,7 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId }) => {
     name: '',
     plantType: '',
     currentMode: 'AUTO',
+    thresholdEnabled: false,
     thresholdMin: 30,
     thresholdMax: 70
   });
@@ -18,6 +19,7 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId }) => {
         name: initialData.name || '',
         plantType: initialData.plantType || '',
         currentMode: initialData.currentMode || 'AUTO',
+        thresholdEnabled: Boolean(initialData.thresholdEnabled),
         thresholdMin: initialData.thresholdMin || 30,
         thresholdMax: initialData.thresholdMax || 70
       });
@@ -26,6 +28,7 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId }) => {
         name: '',
         plantType: '',
         currentMode: 'AUTO',
+        thresholdEnabled: false,
         thresholdMin: 30,
         thresholdMax: 70
       });
@@ -33,10 +36,12 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId }) => {
   }, [initialData, isOpen]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: (name === 'thresholdMin' || name === 'thresholdMax') ? parseFloat(value) : value
+      [name]: type === 'checkbox'
+        ? checked
+        : (name === 'thresholdMin' || name === 'thresholdMax') ? parseFloat(value) : value
     }));
   };
 
@@ -89,6 +94,16 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId }) => {
               <option value="MANUAL">Manual</option>
             </select>
           </div>
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <input
+              type="checkbox"
+              id="thresholdEnabled"
+              name="thresholdEnabled"
+              checked={formData.thresholdEnabled}
+              onChange={handleChange}
+            />
+            <label htmlFor="thresholdEnabled" style={{ margin: 0 }}>Enable Moisture Threshold Control</label>
+          </div>
           <div className="form-row">
             <div className="form-group">
               <label>Min Moisture (%)</label>
@@ -99,6 +114,7 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId }) => {
                 onChange={handleChange}
                 min="0"
                 max="100"
+                disabled={!formData.thresholdEnabled}
               />
             </div>
             <div className="form-group">
@@ -110,6 +126,7 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId }) => {
                 onChange={handleChange}
                 min="0"
                 max="100"
+                disabled={!formData.thresholdEnabled}
               />
             </div>
           </div>

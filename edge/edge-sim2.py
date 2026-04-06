@@ -7,13 +7,16 @@ import paho.mqtt.client as mqtt
 # ==========================================
 # Nếu Mosquitto chạy trên cùng máy tính này (qua Docker), dùng 127.0.0.1
 # Nếu EC2, thay bằng IP Public của EC2
-BROKER_ADDRESS = "10.0.236.176" 
+BROKER_ADDRESS = "10.0.231.233" 
 PORT = 1883
+TOPIC_TELEMETRY_TEMP = "z_1/temp"
+TOPIC_TELEMETRY_HUMI = "z_1/humidity"
 
 #Row 2
 TOPIC_TELEMETRY_SOIL = "z_1/r_2/soil"
 TOPIC_TELEMETRY_PUMP_STATUS = "z_1/r_2/pump_status"
 TOPIC_COMMAND_PUMP = "z_1/r_2/pump"
+TOPIC_COMMAND_CONFIG = "z_1/r_2/config"
 
 
 
@@ -26,7 +29,9 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         print(f"✅ Đã kết nối thành công tới Broker {BROKER_ADDRESS}:{PORT}")
         client.subscribe(TOPIC_COMMAND_PUMP, qos=1)
+        client.subscribe(TOPIC_COMMAND_CONFIG, qos=1)
         print(f"📡 Đang lắng nghe lệnh bơm tại topic: {TOPIC_COMMAND_PUMP}")
+        print(f"📡 Đang lắng nghe cấu hình lịch tại topic: {TOPIC_COMMAND_CONFIG}")
     else:
         print(f"❌ Kết nối thất bại, mã lỗi: {reason_code}")
 
@@ -39,8 +44,24 @@ def on_disconnect(client, userdata, flags, reason_code, properties=None):
 def on_message(client, userdata, msg):
     global base_pump_status
     if msg.topic == TOPIC_COMMAND_PUMP:
-        base_pump_status = 0 if base_pump_status == 1 else 1
-        print(f"🔁 Nhận lệnh pump, đổi trạng thái thành: {base_pump_status}")
+        raw_cmd = msg.payload.decode(errors='ignore').strip().upper()
+
+        # Handle deterministic commands first to avoid flip-flop state.
+        if raw_cmd in ("ON", "1", "TRUE"):
+            new_status = 1
+        elif raw_cmd in ("OFF", "0", "FALSE"):
+            new_status = 0
+        else:
+            # Keep backward compatibility for legacy TOGGLE payloads.
+            new_status = 0 if base_pump_status == 1 else 1
+
+        if new_status != base_pump_status:
+            base_pump_status = new_status
+            print(f"🔁 Nhận lệnh pump '{raw_cmd or 'TOGGLE'}', đổi trạng thái thành: {base_pump_status}")
+        else:
+            print(f"ℹ️ Nhận lệnh pump '{raw_cmd or 'TOGGLE'}', trạng thái giữ nguyên: {base_pump_status}")
+    elif msg.topic == TOPIC_COMMAND_CONFIG:
+        print(f"🗓️ Nhận cấu hình lịch mới từ cloud: {msg.payload.decode(errors='ignore')}")
 
 # ==========================================
 # 2. KHỞI TẠO MQTT CLIENT
@@ -67,26 +88,37 @@ def publish_mock_sensor_data():
     print("🚀 Bắt đầu giả lập luồng dữ liệu cảm biến (Nhấn Ctrl+C để dừng)...")
     
     # Khởi tạo giá trị gốc
+    base_temp = 28.0
+    base_humi = 65.0
     base_soil = 45.0
+    soil_val = base_soil
     while True:
         try:
             # Sinh dữ liệu ngẫu nhiên (dao động nhẹ quanh giá trị gốc) để test biểu đồ
-            soil_val = round(base_soil + random.uniform(-2.0, 2.0), 1)
-            
+            temp_val = round(base_temp + random.uniform(-1.5, 1.5), 1)
+            humi_val = round(base_humi + random.uniform(-5.0, 5.0), 1)
+            soil_val = soil_val - 1
+            if base_pump_status == 1: # Nếu pump đang bật, soil sẽ tăng dần lên
+                soil_val =  soil_val+5;        
             # Cố tình tạo ra một spike (đột biến) để test ngoại lệ E2/E3 lâu lâu 1 lần
-            if random.randint(1, 20) == 20: 
-                soil_val = 100.0 # Lỗi cảm biến (E3)
-                print("⚠️ [MÔ PHỎNG LỖI CẢM BIẾN]")
+            # if random.randint(1, 20) == 20: 
+            #     soil_val = 100.0 # Lỗi cảm biến (E3)
+            #     print("⚠️ [MÔ PHỎNG LỖI CẢM BIẾN]")
 
             # Tạo Payload Dictionary
+            payload_dict_temp = str(temp_val)
+            payload_dict_humi = str(humi_val)
             payload_dict_soil = str(soil_val)
             payload_dict_pump_status = str(base_pump_status)
             
             # Publish lên Broker
+            client.publish(TOPIC_TELEMETRY_TEMP, payload_dict_temp, qos=1)
+            client.publish(TOPIC_TELEMETRY_HUMI, payload_dict_humi, qos=1)
             client.publish(TOPIC_TELEMETRY_SOIL, payload_dict_soil, qos=1)
             client.publish(TOPIC_TELEMETRY_PUMP_STATUS, payload_dict_pump_status, qos=1)
 
             print(
+                f"📤 Đã gửi: payload_dict_temp = {payload_dict_temp}, payload_dict_humi = {payload_dict_humi}, "
                 f"payload_dict_soil = {payload_dict_soil}, payload_dict_pump_status = {payload_dict_pump_status}"
             )
             

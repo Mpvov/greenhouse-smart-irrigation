@@ -9,5 +9,6 @@ import reactor.core.publisher.Mono;
 @Repository
 public interface ScheduleRepository extends ReactiveMongoRepository<Schedule, String> {
     Flux<Schedule> findByRowId(String rowId);
+    Flux<Schedule> findByRowIdAndIsActiveTrue(String rowId);
     Mono<Void> deleteByRowId(String rowId);
 }

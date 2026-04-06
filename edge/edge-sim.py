@@ -7,7 +7,7 @@ import paho.mqtt.client as mqtt
 # ==========================================
 # Nếu Mosquitto chạy trên cùng máy tính này (qua Docker), dùng 127.0.0.1
 # Nếu EC2, thay bằng IP Public của EC2
-BROKER_ADDRESS = "10.0.236.176" 
+BROKER_ADDRESS = "10.0.231.233" 
 PORT = 1883
 TOPIC_TELEMETRY_TEMP = "z_1/temp"
 TOPIC_TELEMETRY_HUMI = "z_1/humidity"
@@ -16,6 +16,7 @@ TOPIC_TELEMETRY_HUMI = "z_1/humidity"
 TOPIC_TELEMETRY_SOIL = "z_1/r_1/soil"
 TOPIC_TELEMETRY_PUMP_STATUS = "z_1/r_1/pump_status"
 TOPIC_COMMAND_PUMP = "z_1/r_1/pump"
+TOPIC_COMMAND_CONFIG = "z_1/r_1/config"
 
 
 
@@ -28,7 +29,9 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         print(f"✅ Đã kết nối thành công tới Broker {BROKER_ADDRESS}:{PORT}")
         client.subscribe(TOPIC_COMMAND_PUMP, qos=1)
+        client.subscribe(TOPIC_COMMAND_CONFIG, qos=1)
         print(f"📡 Đang lắng nghe lệnh bơm tại topic: {TOPIC_COMMAND_PUMP}")
+        print(f"📡 Đang lắng nghe cấu hình lịch tại topic: {TOPIC_COMMAND_CONFIG}")
     else:
         print(f"❌ Kết nối thất bại, mã lỗi: {reason_code}")
 
@@ -41,8 +44,24 @@ def on_disconnect(client, userdata, flags, reason_code, properties=None):
 def on_message(client, userdata, msg):
     global base_pump_status
     if msg.topic == TOPIC_COMMAND_PUMP:
-        base_pump_status = 0 if base_pump_status == 1 else 1
-        print(f"🔁 Nhận lệnh pump, đổi trạng thái thành: {base_pump_status}")
+        raw_cmd = msg.payload.decode(errors='ignore').strip().upper()
+
+        # Handle deterministic commands first to avoid flip-flop state.
+        if raw_cmd in ("ON", "1", "TRUE"):
+            new_status = 1
+        elif raw_cmd in ("OFF", "0", "FALSE"):
+            new_status = 0
+        else:
+            # Keep backward compatibility for legacy TOGGLE payloads.
+            new_status = 0 if base_pump_status == 1 else 1
+
+        if new_status != base_pump_status:
+            base_pump_status = new_status
+            print(f"🔁 Nhận lệnh pump '{raw_cmd or 'TOGGLE'}', đổi trạng thái thành: {base_pump_status}")
+        else:
+            print(f"ℹ️ Nhận lệnh pump '{raw_cmd or 'TOGGLE'}', trạng thái giữ nguyên: {base_pump_status}")
+    elif msg.topic == TOPIC_COMMAND_CONFIG:
+        print(f"🗓️ Nhận cấu hình lịch mới từ cloud: {msg.payload.decode(errors='ignore')}")
 
 # ==========================================
 # 2. KHỞI TẠO MQTT CLIENT

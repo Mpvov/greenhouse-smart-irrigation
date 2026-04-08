@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../store/AuthContext';
 import { useTelemetrySocket } from '../hooks/useTelemetrySocket';
 import { ZoneCard } from '../components/ZoneCard';
+import { rowApi } from '../services/apiClient';
 
 function Dashboard() {
   const { token } = useAuth();
   const [monitoringTree, setMonitoringTree] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const [togglingRowIds, setTogglingRowIds] = useState({});
 
   // 1. Fetch the hierarchy (Greenhouses -> Zones -> Rows)
   useEffect(() => {
@@ -36,6 +38,25 @@ function Dashboard() {
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${wsProtocol}//${window.location.host}/ws/telemetry`;
   const { telemetryData, isConnected, error: wsError } = useTelemetrySocket(wsUrl, token);
+
+  const handleTogglePump = async (rowId, currentStatus) => {
+    if (!rowId || togglingRowIds[rowId]) return;
+
+    const action = String(currentStatus).toUpperCase() === 'ON' ? 'OFF' : 'ON';
+
+    setTogglingRowIds(prev => ({ ...prev, [rowId]: true }));
+    try {
+      await rowApi.controlPump(rowId, action);
+    } catch (err) {
+      console.error('[Dashboard] Failed to control pump', err);
+    } finally {
+      setTogglingRowIds(prev => {
+        const cloned = { ...prev };
+        delete cloned[rowId];
+        return cloned;
+      });
+    }
+  };
 
   if (isLoading) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Loading monitoring system...</div>;
@@ -90,6 +111,8 @@ function Dashboard() {
                   telemetryData={telemetryData} 
                   initialTemp={zoneTree.info.lastTemperature}
                   initialHumidity={zoneTree.info.lastHumidity}
+                  onTogglePump={handleTogglePump}
+                  togglingRowIds={togglingRowIds}
                 />
               ))}
             </div>

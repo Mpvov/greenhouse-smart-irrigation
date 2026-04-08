@@ -222,6 +222,23 @@
     border-radius: 4px;
 }
 
+.threshold-val {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.threshold-val--on {
+  color: #6dd8ff;
+  background: rgba(109, 216, 255, 0.12);
+}
+
+.threshold-val--off {
+  color: #777;
+  background: #252525;
+}
+
 .pump-val--on {
     color: #00ff88;
     background: rgba(0, 255, 136, 0.1);
@@ -248,6 +265,11 @@
 .status-tag--manual {
     background: rgba(255, 204, 0, 0.1);
     color: #ffcc00;
+}
+
+.status-tag--schedule {
+  background: rgba(0, 170, 255, 0.12);
+  color: #2ab7ff;
 }
 
 .btn-add-mini {

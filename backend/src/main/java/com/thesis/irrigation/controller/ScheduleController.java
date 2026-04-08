@@ -31,9 +31,11 @@ public class ScheduleController {
     }
 
     @GetMapping("/row/{rowId}")
-    public Mono<ResponseEntity<BaseResponse<List<Schedule>>>> getByRow(@PathVariable String rowId, @RequestHeader("Authorization") String authHeader) {
+    public Mono<ResponseEntity<BaseResponse<List<Schedule>>>> getByRow(@PathVariable String rowId,
+            @RequestHeader("Authorization") String authHeader) {
         String userId = getUserIdFromHeader(authHeader);
-        if (userId == null) return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        if (userId == null)
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
 
         return scheduleService.getByRow(rowId, userId)
                 .collectList()
@@ -41,9 +43,11 @@ public class ScheduleController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<BaseResponse<Schedule>>> create(@RequestBody Schedule schedule, @RequestHeader("Authorization") String authHeader) {
+    public Mono<ResponseEntity<BaseResponse<Schedule>>> create(@RequestBody Schedule schedule,
+            @RequestHeader("Authorization") String authHeader) {
         String userId = getUserIdFromHeader(authHeader);
-        if (userId == null) return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        if (userId == null)
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
 
         return scheduleService.createSchedule(schedule, userId)
                 .map(saved -> ResponseEntity.status(HttpStatus.CREATED).body(BaseResponse.success("Created", saved)))
@@ -52,11 +56,14 @@ public class ScheduleController {
     }
 
     @DeleteMapping("/{id}")
-    public Mono<ResponseEntity<BaseResponse<Void>>> delete(@PathVariable String id, @RequestHeader("Authorization") String authHeader) {
+    public Mono<ResponseEntity<BaseResponse<Void>>> delete(@PathVariable String id,
+            @RequestHeader("Authorization") String authHeader) {
         String userId = getUserIdFromHeader(authHeader);
-        if (userId == null) return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        if (userId == null)
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
 
         return scheduleService.deleteSchedule(id, userId)
                 .then(Mono.just(ResponseEntity.ok(BaseResponse.<Void>success("Deleted", null))));
     }
+
 }

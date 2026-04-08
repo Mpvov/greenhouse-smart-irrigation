@@ -42,8 +42,8 @@
         "type": "function",
         "z": "caa7edc451bdca23",
         "name": "function 1",
-        "func": "// 1. Lấy giá trị thô từ Yolo:bit\nlet rawValue = parseFloat(msg.payload);\nif (isNaN(rawValue)) return null; // Bỏ qua nếu dữ liệu rác\n\n// 2. Phân tích Topic nội bộ (VD: z_1/r_1/soil)\nlet internalTopic = msg.topic;\nlet topicParts = internalTopic.split('/');\nlet metricName = topicParts[topicParts.length - 1]; // Lấy chữ 'soil' hoặc 'temp'\n\n// 3. Xác định đơn vị (Unit) theo chuẩn SenML\nlet unit = \"\";\nif (metricName === \"temp\") unit = \"Cel\";\nelse if (metricName === \"humidity\" || metricName === \"soil\") unit = \"%RH\";\nelse if (metricName === \"pump\") unit = \"boolean\";\n\n// 4. Đóng gói thành SenML JSON\nlet senml = {\n    \"bn\": \"user_admin/gh_alpha/\" + internalTopic + \"/\",\n    \"e\": [\n        {\n            \"n\": metricName,\n            \"u\": unit,\n            \"v\": rawValue,\n            \"t\": Math.floor(Date.now() / 1000) // Timestamp hiện tại\n        }\n    ]\n};\n\n// 5. Chuẩn bị bản tin để gửi lên Cloud\nmsg.payload = senml;\n// Nối thêm tiền tố để ra Shared Topic\nmsg.topic = \"user_admin/gh_alpha/\" + internalTopic;\n\nreturn msg;",
-        "outputs": 1,
+        "func": "const topic = String(msg.topic || \"\");\n\n// Uplink: Local Edge telemetry z_# -> Cloud shared topic user_admin/gh_alpha/z_#\nif (topic.startsWith(\"z_\")) {\n    const topicParts = topic.split('/');\n    const metricName = topicParts[topicParts.length - 1];\n    const allowedTelemetry = [\"temp\", \"humidity\", \"soil\", \"pump_status\"];\n    if (!allowedTelemetry.includes(metricName)) return null;\n\n    const rawValue = parseFloat(msg.payload);\n    if (isNaN(rawValue)) return null;\n\n    let unit = \"\";\n    if (metricName === \"temp\") unit = \"Cel\";\n    else if (metricName === \"humidity\" || metricName === \"soil\") unit = \"%RH\";\n    else if (metricName === \"pump_status\") unit = \"boolean\";\n\n    const senml = {\n        bn: \"user_admin/gh_alpha/\" + topic + \"/\",\n        e: [\n            {\n                n: metricName,\n                u: unit,\n                v: rawValue,\n                t: Math.floor(Date.now() / 1000)\n            }\n        ]\n    };\n\n    msg.payload = senml;\n    msg.topic = \"user_admin/gh_alpha/\" + topic;\n    return [msg, null];\n}\n\n// Downlink: Cloud command/config user_admin/gh_alpha/z_#/r_#/(pump|config...) -> Local z_#/r_#/(pump|config...)\nconst commandMatch = topic.match(/^user_admin\\/gh_alpha\\/(z_[^/]+)\\/(r_[^/]+)\\/pump$/);\nif (commandMatch) {\n    const zPart = commandMatch[1];\n    const rPart = commandMatch[2];\n    msg.topic = `${zPart}/${rPart}/pump`;\n    msg.payload = String(msg.payload ?? \"TOGGLE\");\n    return [null, msg];\n}\n\nconst configMatch = topic.match(/^user_admin\\/gh_alpha\\/(z_[^/]+)\\/(r_[^/]+)\\/config(?:\\/(.*))?$/);\nif (configMatch) {\n    const zPart = configMatch[1];\n    const rPart = configMatch[2];\n    const configSuffix = configMatch[3];\n    msg.topic = configSuffix ? `${zPart}/${rPart}/config/${configSuffix}` : `${zPart}/${rPart}/config`;\n    if (typeof msg.payload !== \"string\") {\n        msg.payload = JSON.stringify(msg.payload);\n    }\n    return [null, msg];\n}\n\nreturn null;",
+        "outputs": 2,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -54,6 +54,10 @@
         "wires": [
             [
                 "973ffac5499d59f5",
+                "9c703cd2539593f1"
+            ],
+            [
+                "d67e8cf8d078d130",
                 "9c703cd2539593f1"
             ]
         ]
@@ -71,7 +75,7 @@
         "userProps": "",
         "correl": "",
         "expiry": "",
-        "broker": "067c2d7e08c5e5c7",
+        "broker": "1b83fe86f95f93a2",
         "x": 690,
         "y": 380,
         "wires": []
@@ -93,10 +97,80 @@
         "wires": []
     },
     {
+        "id": "7c794d764f46bdde",
+        "type": "mqtt in",
+        "z": "caa7edc451bdca23",
+        "name": "",
+        "topic": "user_admin/gh_alpha/#",
+        "qos": "1",
+        "datatype": "utf8",
+        "broker": "1b83fe86f95f93a2",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 320,
+        "wires": [
+            [
+                "ca71bc34801529a2"
+            ]
+        ]
+    },
+    {
+        "id": "d67e8cf8d078d130",
+        "type": "mqtt out",
+        "z": "caa7edc451bdca23",
+        "name": "",
+        "topic": "",
+        "qos": "1",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "067c2d7e08c5e5c7",
+        "x": 690,
+        "y": 320,
+        "wires": []
+    },
+    {
         "id": "067c2d7e08c5e5c7",
         "type": "mqtt-broker",
         "name": "Fog Local Broker",
         "broker": "fog-local-broker",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "1b83fe86f95f93a2",
+        "type": "mqtt-broker",
+        "name": "Cloud Remote Broker",
+        "broker": "cloud-remote-broker",
         "port": 1883,
         "clientid": "",
         "autoConnect": true,

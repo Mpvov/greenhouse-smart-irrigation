@@ -11,6 +11,7 @@ const ZoneRows = ({ zoneId, greenhouseId }) => {
   const [loading, setLoading] = useState(true);
   const [isRowFormOpen, setIsRowFormOpen] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
+  const [rowFormMode, setRowFormMode] = useState('create');
   const [manageDevicesRowId, setManageDevicesRowId] = useState(null);
   const [manageSchedulesRowId, setManageSchedulesRowId] = useState(null);
 
@@ -33,12 +34,28 @@ const ZoneRows = ({ zoneId, greenhouseId }) => {
   const handleCreateRow = (e) => {
     e.stopPropagation();
     setEditingRow(null);
+    setRowFormMode('create');
     setIsRowFormOpen(true);
   };
 
   const handleEditRow = (e, row) => {
     e.stopPropagation();
     setEditingRow(row);
+    setRowFormMode('edit');
+    setIsRowFormOpen(true);
+  };
+
+  const handleThresholdRow = (e, row) => {
+    e.stopPropagation();
+    setEditingRow(row);
+    setRowFormMode('threshold');
+    setIsRowFormOpen(true);
+  };
+
+  const handleModeRow = (e, row) => {
+    e.stopPropagation();
+    setEditingRow(row);
+    setRowFormMode('mode');
     setIsRowFormOpen(true);
   };
 
@@ -88,11 +105,16 @@ const ZoneRows = ({ zoneId, greenhouseId }) => {
                 </div>
                 <div className="row-item__data">
                   <span className="moisture-val">💧 {row.lastSoilMoisture ? `${row.lastSoilMoisture.toFixed(1)}%` : '--'}</span>
+                  <span className={`threshold-val threshold-val--${row.thresholdEnabled ? 'on' : 'off'}`}>
+                    Threshold: {row.thresholdEnabled ? `${row.thresholdMin ?? '--'} - ${row.thresholdMax ?? '--'}%` : 'OFF'}
+                  </span>
                   <span className={`pump-val pump-val--${row.pumpStatus === 'ON' ? 'on' : 'off'}`}>
                     Pump: {row.pumpStatus}
                   </span>
                 </div>
                 <div className="row-item__actions">
+                  <button className="btn-mini" onClick={(e) => handleModeRow(e, row)} title="Set Mode">⚙️</button>
+                  <button className="btn-mini" onClick={(e) => handleThresholdRow(e, row)} title="Set Threshold">🎯</button>
                   <button className="btn-mini" onClick={(e) => toggleManageSchedules(e, row.id)} title="Irrigation Schedules">🗓️</button>
                   <button className="btn-mini" onClick={(e) => toggleManageDevices(e, row.id)} title="Devices">🛠️</button>
                   <button className="btn-mini" onClick={(e) => handleEditRow(e, row)} title="Edit Row">✏️</button>
@@ -134,6 +156,7 @@ const ZoneRows = ({ zoneId, greenhouseId }) => {
           fetchRows(); 
         }}
         initialData={editingRow}
+        mode={rowFormMode}
         zoneId={zoneId}
       />
     </div>

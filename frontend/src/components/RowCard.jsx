@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function RowCard({ id, name, plantType, mode, initialSoilMoisture, initialPumpStatus, data }) {
+export function RowCard({ id, name, plantType, mode, initialSoilMoisture, initialPumpStatus, data, onTogglePump, isTogglingPump = false }) {
   // Values are directly available from data (telemetryData[id])
   const soilMoisture = data.soilMoisture !== undefined ? data.soilMoisture : initialSoilMoisture;
   const pumpStatus = data.pumpStatus !== undefined ? data.pumpStatus : initialPumpStatus;
@@ -45,9 +45,25 @@ export function RowCard({ id, name, plantType, mode, initialSoilMoisture, initia
         
         <div style={{ background: '#1a1a1a', padding: '0.6rem', borderRadius: '6px' }}>
           <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.2rem' }}>PUMP STATUS</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: '800', color: getStatusColor() }}>
-            {isAlert ? 'LOCKED' : (pumpStatus || '--')}
-          </div>
+          <button
+            type="button"
+            onClick={() => onTogglePump?.(id, pumpStatus)}
+            disabled={isAlert || isOffline || isTogglingPump}
+            title={isAlert ? 'Pump is locked due to alert' : (isOffline ? 'Device is offline' : 'Click to toggle pump')}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              padding: 0,
+              margin: 0,
+              cursor: (isAlert || isOffline || isTogglingPump) ? 'not-allowed' : 'pointer',
+              color: getStatusColor(),
+              fontSize: '1.2rem',
+              fontWeight: '800',
+              opacity: isTogglingPump ? 0.7 : 1
+            }}
+          >
+            {isTogglingPump ? '...' : (isAlert ? 'LOCKED' : (pumpStatus || '--'))}
+          </button>
         </div>
       </div>
 

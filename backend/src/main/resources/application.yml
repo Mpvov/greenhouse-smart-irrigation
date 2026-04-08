@@ -6,11 +6,11 @@ spring:
   data:
     mongodb:
       # Docker profile: overridden by SPRING_DATA_MONGODB_URI env var
-      uri: mongodb://localhost:27017/irrigation_db
+      uri: mongodb://admin:irrigation_secret@mongodb:27017/irrigation_db?authSource=admin
 
     # ── Redis ────────────────────────────────────────────────────────────────
     redis:
-      host: localhost
+      host: redis
       port: 6379
 
 # ── Server ────────────────────────────────────────────────────────────────────
@@ -22,9 +22,11 @@ mqtt:
   broker:
     url: tcp://localhost:1883
   client:
-    id: irrigation-backend-${random.uuid}
+    id: irrigation-backend-1
   topic:
     publish: command/#
+  url: tcp://cloud-remote-broker:1883
+
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 logging:
@@ -34,18 +36,4 @@ logging:
 
 ---
 # ── Docker Profile (activated via SPRING_PROFILES_ACTIVE=docker) ────────────
-spring:
-  config:
-    activate:
-      on-profile: docker
-  data:
-    mongodb:
-      # SPRING_DATA_MONGODB_URI env var injected by docker-compose overrides this
-      uri: ${SPRING_DATA_MONGODB_URI}
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST:redis}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
 
-mqtt:
-  broker:
-    url: ${MQTT_BROKER_URL:tcp://cloud-remote-broker:1883}

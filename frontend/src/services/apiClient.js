@@ -59,6 +59,9 @@ export const rowApi = {
     getByZone: (zoneId) => apiClient.get(`/v1/rows/zone/${zoneId}`).then(res => res.data.data),
     create: (data) => apiClient.post('/v1/rows', data).then(res => res.data.data),
     update: (id, data) => apiClient.put(`/v1/rows/${id}`, data).then(res => res.data.data),
+    updateMode: (id, currentMode) => apiClient.put(`/v1/devices/irrigate/${id}/mode`, { currentMode }).then(res => res.data),
+    updateThreshold: (id, thresholdMin, thresholdMax) => apiClient.put(`/v1/devices/irrigate/${id}/threshold`, { thresholdMin, thresholdMax }).then(res => res.data),
+    controlPump: (id, action = 'TOGGLE') => apiClient.post(`/v1/devices/irrigate/${id}/control`, { action }).then(res => res.data),
     delete: (id) => apiClient.delete(`/v1/rows/${id}`).then(res => res.data.data),
 };
 

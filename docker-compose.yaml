@@ -192,6 +192,7 @@ services:
       - node_red_data:/data
     networks:
       - fog-net # Kết nối với fog-local-broker
+      - cloud-net # Kết nối trực tiếp với cloud-remote-broker
     depends_on:
       - fog-local-broker
     restart: unless-stopped

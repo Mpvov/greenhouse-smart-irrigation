@@ -13,11 +13,11 @@ TOPIC_TELEMETRY_TEMP = "z_1/temp"
 TOPIC_TELEMETRY_HUMI = "z_1/humidity"
 
 #Row 1
-TOPIC_TELEMETRY_SOIL = "z_1/r_1/soil"
-TOPIC_TELEMETRY_PUMP_STATUS = "z_1/r_1/pump_status"
-TOPIC_COMMAND_PUMP = "z_1/r_1/pump"
-TOPIC_COMMAND_CONFIG = "z_1/r_1/config"
-TOPIC_COMMAND_CONFIG_WILDCARD = "z_1/r_1/config/#"
+TOPIC_TELEMETRY_SOIL = "z_1/r_2/soil"
+TOPIC_TELEMETRY_PUMP_STATUS = "z_1/r_2/pump_status"
+TOPIC_COMMAND_PUMP = "z_1/r_2/pump"
+TOPIC_COMMAND_CONFIG = "z_1/r_2/config"
+TOPIC_COMMAND_CONFIG_WILDCARD = "z_1/r_2/config/#"
 
 
 
@@ -28,7 +28,7 @@ base_pump_status = 0
 # ==========================================
 # Config variables (Mode, Threshold, Schedule)
 # ==========================================
-config_mode = "MANUAL"  # AUTO, MANUAL, SCHEDULE
+config_mode = "AUTO"  # AUTO, MANUAL, SCHEDULE
 config_threshold_min = 30.0
 config_threshold_max = 70.0
 config_schedules = []  # List of active schedules [{"start_time": "08:00", "duration_mins": 15}, ...]

@@ -92,7 +92,7 @@ public class RowService {
                                                         .greenhouseId(existing.greenhouseId())
                                                         .name(row.name())
                                                         .plantType(row.plantType())
-                                                        .currentMode(row.currentMode())
+                                                        .currentMode(existing.currentMode())
                                                         .thresholdEnabled(thresholdEnabled)
                                                         .thresholdMin(row.thresholdMin())
                                                         .thresholdMax(row.thresholdMax())

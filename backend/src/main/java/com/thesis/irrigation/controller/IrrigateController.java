@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PutMapping;
 
+import com.thesis.irrigation.domain.dto.ModeConfigResponse;
+import com.thesis.irrigation.domain.dto.ModeRequest;
 import com.thesis.irrigation.domain.dto.ThresholdConfigResponse;
 import com.thesis.irrigation.domain.dto.ThresholdRequest;
 import com.thesis.irrigation.service.IrrigationService;
@@ -66,6 +68,27 @@ public class IrrigateController {
         return irrigationService.updateThreshold(id, userId,
                 request != null ? request.thresholdMin() : null,
                 request != null ? request.thresholdMax() : null)
+                .map(ResponseEntity::ok)
+                .onErrorResume(org.springframework.security.access.AccessDeniedException.class,
+                        e -> Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build()))
+                .onErrorResume(IllegalStateException.class,
+                        e -> Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build()))
+                .onErrorResume(IllegalArgumentException.class,
+                        e -> Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).build()));
+    }
+
+    @PutMapping("/{id}/mode")
+    public Mono<ResponseEntity<ModeConfigResponse>> updateMode(
+            @PathVariable String id,
+            @RequestBody ModeRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        String userId = getUserIdFromHeader(authHeader);
+        if (userId == null) {
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        }
+
+        return irrigationService.updateMode(id, userId,
+                request != null ? request.currentMode() : null)
                 .map(ResponseEntity::ok)
                 .onErrorResume(org.springframework.security.access.AccessDeniedException.class,
                         e -> Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build()))

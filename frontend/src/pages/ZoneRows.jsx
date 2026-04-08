@@ -52,6 +52,13 @@ const ZoneRows = ({ zoneId, greenhouseId }) => {
     setIsRowFormOpen(true);
   };
 
+  const handleModeRow = (e, row) => {
+    e.stopPropagation();
+    setEditingRow(row);
+    setRowFormMode('mode');
+    setIsRowFormOpen(true);
+  };
+
   const toggleManageDevices = (e, id) => {
     e.stopPropagation();
     setManageSchedulesRowId(null);
@@ -106,6 +113,7 @@ const ZoneRows = ({ zoneId, greenhouseId }) => {
                   </span>
                 </div>
                 <div className="row-item__actions">
+                  <button className="btn-mini" onClick={(e) => handleModeRow(e, row)} title="Set Mode">⚙️</button>
                   <button className="btn-mini" onClick={(e) => handleThresholdRow(e, row)} title="Set Threshold">🎯</button>
                   <button className="btn-mini" onClick={(e) => toggleManageSchedules(e, row.id)} title="Irrigation Schedules">🗓️</button>
                   <button className="btn-mini" onClick={(e) => toggleManageDevices(e, row.id)} title="Devices">🛠️</button>

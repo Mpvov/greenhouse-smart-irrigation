@@ -267,6 +267,11 @@
     color: #ffcc00;
 }
 
+.status-tag--schedule {
+  background: rgba(0, 170, 255, 0.12);
+  color: #2ab7ff;
+}
+
 .btn-add-mini {
     background: #333;
     color: #00ff88;

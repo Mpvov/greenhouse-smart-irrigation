@@ -4,6 +4,7 @@ import com.thesis.irrigation.config.MqttGateway;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thesis.irrigation.domain.dto.ControlRequest;
+import com.thesis.irrigation.domain.dto.ModeConfigResponse;
 import com.thesis.irrigation.domain.dto.ThresholdConfigResponse;
 import com.thesis.irrigation.domain.model.ControlLog;
 import com.thesis.irrigation.domain.model.DataRecord;
@@ -154,6 +155,67 @@ public class IrrigationService {
                                                 } catch (JsonProcessingException e) {
                                                     return Mono.error(new RuntimeException(
                                                             "Failed to serialize threshold config",
+                                                            e));
+                                                }
+                                            })));
+                });
+    }
+
+    public Mono<ModeConfigResponse> updateMode(String rowId, String userId, String currentMode) {
+        return getById(rowId, userId)
+                .switchIfEmpty(Mono.error(new org.springframework.security.access.AccessDeniedException(
+                        "Row not found or access denied")))
+                .flatMap(row -> {
+                    if (currentMode == null || currentMode.isBlank()) {
+                        return Mono.error(new IllegalArgumentException("currentMode is required"));
+                    }
+
+                    String normalizedMode = currentMode.trim().toUpperCase();
+                    if (!"AUTO".equals(normalizedMode)
+                            && !"MANUAL".equals(normalizedMode)
+                            && !"SCHEDULE".equals(normalizedMode)) {
+                        return Mono.error(
+                                new IllegalArgumentException("currentMode must be AUTO, MANUAL, or SCHEDULE"));
+                    }
+
+                    Row updatedRow = Row.builder()
+                            .id(row.id())
+                            .rowId(row.rowId())
+                            .zoneId(row.zoneId())
+                            .greenhouseId(row.greenhouseId())
+                            .name(row.name())
+                            .plantType(row.plantType())
+                            .currentMode(normalizedMode)
+                            .thresholdEnabled(row.thresholdEnabled())
+                            .thresholdMin(row.thresholdMin())
+                            .thresholdMax(row.thresholdMax())
+                            .lastSoilMoisture(row.lastSoilMoisture())
+                            .pumpStatus(row.pumpStatus())
+                            .build();
+
+                    return rowRepository.save(updatedRow)
+                            .flatMap(saved -> zoneRepository.findById(saved.zoneId())
+                                    .switchIfEmpty(Mono.error(new IllegalStateException("Zone not found")))
+                                    .flatMap(zone -> greenhouseRepository.findById(saved.greenhouseId())
+                                            .switchIfEmpty(
+                                                    Mono.error(new IllegalStateException("Greenhouse not found")))
+                                            .flatMap(greenhouse -> {
+                                                ModeConfigResponse response = new ModeConfigResponse(
+                                                        saved.currentMode());
+
+                                                String topic = String.format(
+                                                        "user_%s/gh_%s/z_%d/r_%d/config/mode",
+                                                        userId,
+                                                        greenhouse.greenhouseId(),
+                                                        zone.zoneId(),
+                                                        saved.rowId());
+                                                try {
+                                                    mqttGateway.sendToMqtt(topic, 1,
+                                                            objectMapper.writeValueAsString(response));
+                                                    return Mono.just(response);
+                                                } catch (JsonProcessingException e) {
+                                                    return Mono.error(new RuntimeException(
+                                                            "Failed to serialize mode config",
                                                             e));
                                                 }
                                             })));

@@ -37,6 +37,7 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId, mode = 'creat
 
   const isCreateMode = mode === 'create' || !initialData;
   const isThresholdMode = mode === 'threshold' && Boolean(initialData);
+  const isModeMode = mode === 'mode' && Boolean(initialData);
   const isEditMode = mode === 'edit' && Boolean(initialData);
 
   const handleChange = (e) => {
@@ -58,13 +59,15 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId, mode = 'creat
         const rowPayload = {
           name: formData.name,
           plantType: formData.plantType,
-          currentMode: formData.currentMode,
+          currentMode: initialData.currentMode,
           thresholdEnabled: initialData.thresholdEnabled,
           thresholdMin: initialData.thresholdMin,
           thresholdMax: initialData.thresholdMax
         };
 
         await rowApi.update(initialData.id, rowPayload);
+      } else if (isModeMode) {
+        await rowApi.updateMode(initialData.id, formData.currentMode);
       } else if (isThresholdMode) {
         const rowPayload = {
           name: initialData.name,
@@ -93,10 +96,10 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId, mode = 'creat
     <div className="modal-overlay">
       <div className="modal-content">
         <h3>
-          {isCreateMode ? 'Add New Row' : isThresholdMode ? 'Set Threshold' : 'Edit Row'}
+          {isCreateMode ? 'Add New Row' : isThresholdMode ? 'Set Threshold' : isModeMode ? 'Set Mode' : 'Edit Row'}
         </h3>
         <form onSubmit={handleSubmit}>
-          {!isThresholdMode && (
+          {!isThresholdMode && !isModeMode && (
             <>
               <div className="form-group">
                 <label>Row Name</label>
@@ -119,17 +122,21 @@ const RowForm = ({ isOpen, onClose, onSubmit, initialData, zoneId, mode = 'creat
                   placeholder="e.g. Tomato"
                 />
               </div>
-              <div className="form-group">
-                <label>Mode</label>
-                <select name="currentMode" value={formData.currentMode} onChange={handleChange}>
-                  <option value="AUTO">Automatic</option>
-                  <option value="MANUAL">Manual</option>
-                </select>
-              </div>
             </>
           )}
 
-          {!isEditMode && (
+          {isModeMode && (
+            <div className="form-group">
+              <label>Mode</label>
+              <select name="currentMode" value={formData.currentMode} onChange={handleChange}>
+                <option value="AUTO">Automatic</option>
+                <option value="MANUAL">Manual</option>
+                <option value="SCHEDULE">Schedule</option>
+              </select>
+            </div>
+          )}
+
+          {!isEditMode && !isModeMode && (
             <>
               <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <input

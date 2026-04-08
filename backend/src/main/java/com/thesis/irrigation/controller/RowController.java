@@ -78,21 +78,4 @@ public class RowController {
                 .then(Mono.just(ResponseEntity.ok(BaseResponse.<Void>success("Deleted", null))));
     }
 
-    @PostMapping("/{id}/control")
-    public Mono<ResponseEntity<Void>> controlPump(
-            @PathVariable String id,
-            @RequestBody com.thesis.irrigation.domain.dto.ControlRequest request,
-            @RequestHeader("Authorization") String authHeader) {
-        String userId = getUserIdFromHeader(authHeader);
-        if (userId == null) {
-            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
-        }
-
-        return rowService.controlPump(id, userId, request)
-                .thenReturn(ResponseEntity.ok().<Void>build())
-                .onErrorResume(org.springframework.security.access.AccessDeniedException.class,
-                        e -> Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build()))
-                .onErrorResume(IllegalStateException.class,
-                        e -> Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build()));
-    }
 }

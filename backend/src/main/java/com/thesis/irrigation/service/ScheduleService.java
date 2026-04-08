@@ -135,7 +135,7 @@ public class ScheduleService {
                                                 .switchIfEmpty(Mono.error(new RuntimeException("Zone not found")))
                                                 .flatMap(zone -> {
                                                         String topic = String.format(
-                                                                        "user_%s/gh_%s/z_%d/r_%d/config",
+                                                                        "user_%s/gh_%s/z_%d/r_%d/config/schedule",
                                                                         ownerId,
                                                                         ctx.greenhouse().greenhouseId(),
                                                                         zone.zoneId(),

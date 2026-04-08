@@ -26,7 +26,6 @@ public class RowService {
         private final GreenhouseRepository greenhouseRepository;
         private final DeviceRepository deviceRepository;
         private final ScheduleRepository scheduleRepository;
-        private final IrrigationService irrigationService;
 
         public Flux<Row> getByZone(String zoneId, String ownerId) {
                 return zoneRepository.findById(zoneId)
@@ -86,7 +85,6 @@ public class RowService {
                                                         : (existing.thresholdEnabled() != null
                                                                         ? existing.thresholdEnabled()
                                                                         : Boolean.FALSE);
-
                                         Row updated = Row.builder()
                                                         .id(id)
                                                         .rowId(existing.rowId())
@@ -116,28 +114,6 @@ public class RowService {
                                         // 3. Delete row itself
                                         return deleteDevices.then(deleteSchedules).then(rowRepository.delete(row));
                                 });
-        }
-
-        public Mono<Void> controlPump(String rowId, String userId, ControlRequest request) {
-                return getById(rowId, userId)
-                                .switchIfEmpty(Mono.error(new org.springframework.security.access.AccessDeniedException(
-                                                "Row not found or access denied")))
-                                .flatMap(row -> zoneRepository.findById(row.zoneId())
-                                                .switchIfEmpty(Mono.error(new IllegalStateException("Zone not found")))
-                                                .flatMap(zone -> greenhouseRepository.findById(zone.greenhouseId())
-                                                                .switchIfEmpty(Mono.error(new IllegalStateException(
-                                                                                "Greenhouse not found")))
-                                                                .flatMap(greenhouse -> irrigationService
-                                                                                .controlPumpManual(
-                                                                                                row,
-                                                                                                zone,
-                                                                                                greenhouse,
-                                                                                                userId,
-                                                                                                request != null && request
-                                                                                                                .action() != null
-                                                                                                                                ? request.action()
-                                                                                                                                : "TOGGLE"))))
-                                .then();
         }
 
 }
